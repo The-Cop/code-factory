@@ -11,7 +11,7 @@
 #   TIMEOUT             Max polls reached without resolution
 #
 # Approval-gated checks (require human action, excluded from wait/fail logic):
-#   merge gate, peer review, manual approval, codeowner
+#   merge gate, peer review, manual approval, codeowner, devflow/mergegate
 
 set -euo pipefail
 
@@ -21,7 +21,7 @@ MAX_POLLS="${3:-40}"
 
 # Case-insensitive patterns for checks that require human approval.
 # These are excluded from pending/failure counts — they never auto-complete.
-GATED_PATTERN="merge.gate|peer.review|manual.approval|codeowner"
+GATED_PATTERN="merge.gate|peer.review|manual.approval|codeowner|devflow/mergegate"
 
 filter_gated() {
   jq --arg pattern "$GATED_PATTERN" '[.[] | select((.name | ascii_downcase | test($pattern)) | not)]'

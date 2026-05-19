@@ -16,7 +16,7 @@ After the push from Step 7, wait for CI to start and complete using the backgrou
 ${CLAUDE_PLUGIN_ROOT}/skills/pr-fix/scripts/poll-ci.sh {number}
 ```
 
-**MUST run with `run_in_background: true`.** The script automatically filters out approval-gated checks (merge gate, peer review, manual approval, codeowner) and polls every 30 seconds for up to 20 minutes.
+**MUST run with `run_in_background: true`.** The script automatically filters out approval-gated checks (merge gate, peer review, manual approval, codeowner, devflow/mergegate) and polls every 30 seconds for up to 20 minutes.
 
 ### Handle the script's exit state
 

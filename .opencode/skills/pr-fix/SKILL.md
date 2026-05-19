@@ -389,7 +389,10 @@ gh api repos/{owner}/{repo}/pulls/{number}/commits \
 
 Compare timestamps. If the latest commit is **after** the latest bot comment (or no bot comments exist), reviews are stale.
 
-**If reviews are current:** skip to 8b. **If `--auto` mode:** trigger immediately (no prompt). **Interactive mode:**
+**If reviews are current:** skip to 8b.
+**If `--auto` mode:** trigger immediately and engage the wait+fix loop (equivalent to "Yes — review and fix" path;
+8c will poll for comments and apply fixes — max 3 iterations).
+**Interactive mode:**
 
 <interaction>
 AskUserQuestion(
