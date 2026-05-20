@@ -82,6 +82,10 @@ Modules are inferred (may span directories or split a directory).
 
 **Findings**
 
+List every finding the framework's checks produced.
+Do not cap, do not collapse, do not select "top issues".
+If a defect appears at five locations, write five rows with five locations.
+
 | Level | Severity | Confidence | Location | Issue | Why It Matters | Likely Impact | Best Fix |
 |-------|----------|-----------|----------|-------|----------------|---------------|----------|
 | Intent | Major | HIGH | `path/a.go:24` | Adds telemetry not mentioned in PR body | Hidden scope creep; reviewers don't know to verify the metric | Wrong dashboards may light up after deploy | Move to a separate PR or document in the body |
@@ -91,6 +95,42 @@ Modules are inferred (may span directories or split a directory).
 Levels: Intent / Logic / Quality.
 Severity: Critical / Major / Minor.
 Confidence: HIGH / MEDIUM / LOW.
+
+**Per-check audit**
+
+Every check in the three-level framework must be ticked.
+`✓ findings` means the check produced at least one finding row above.
+`✓ scanned` means the check was applied and produced nothing.
+A module is not reviewed until every check is ticked.
+
+| Level | Check | Status |
+|-------|-------|--------|
+| Intent | Alignment | ✓ findings / ✓ scanned |
+| Intent | Scope creep | ✓ findings / ✓ scanned |
+| Intent | Missing pieces | ✓ findings / ✓ scanned |
+| Intent | Surprise | ✓ findings / ✓ scanned |
+| Intent | Test alignment | ✓ findings / ✓ scanned |
+| Logic | Control flow | ✓ findings / ✓ scanned |
+| Logic | Nil/null/zero | ✓ findings / ✓ scanned |
+| Logic | Error paths | ✓ findings / ✓ scanned |
+| Logic | Invariants | ✓ findings / ✓ scanned |
+| Logic | Concurrency | ✓ findings / ✓ scanned |
+| Logic | Ordering | ✓ findings / ✓ scanned |
+| Logic | Edge cases | ✓ findings / ✓ scanned |
+| Logic | Backward compatibility | ✓ findings / ✓ scanned |
+| Logic | Old/new interactions | ✓ findings / ✓ scanned |
+| Logic | Idempotency | ✓ findings / ✓ scanned |
+| Quality | Duplication | ✓ findings / ✓ scanned |
+| Quality | Magic values | ✓ findings / ✓ scanned |
+| Quality | Dead code | ✓ findings / ✓ scanned |
+| Quality | Abstractions | ✓ findings / ✓ scanned |
+| Quality | Naming | ✓ findings / ✓ scanned |
+| Quality | Patterns | ✓ findings / ✓ scanned |
+| Quality | Error handling | ✓ findings / ✓ scanned |
+| Quality | Security | ✓ findings / ✓ scanned |
+| Quality | Performance | ✓ findings / ✓ scanned |
+| Quality | Test quality | ✓ findings / ✓ scanned |
+| Quality | Test seams | ✓ findings / ✓ scanned |
 
 **Missing or Insufficient Tests**
 

@@ -51,6 +51,27 @@ One module entry per module.
 Tag every finding with Level (Intent/Logic/Quality), Severity (Critical/Major/Minor), and Confidence (HIGH/MEDIUM/LOW).
 Cite specific file:line locations for every finding.
 
+## Enumeration discipline
+
+The review is exhaustive, not curated.
+
+- Do not cap findings.
+  If a module has 30 minor issues, list 30 minor issues.
+- Do not collapse repeated instances.
+  If the same defect appears at five locations, write five rows with five locations.
+- Do not produce a "top issues" or "key findings" digest.
+  The findings table is the report.
+- Apply each check independently.
+  Different lenses catch different defects on the same code.
+- For each check listed in the framework, either record at least one finding row
+  or mark the check `✓ scanned` in the per-check audit table.
+  Never leave a check unmarked.
+
+After enumerating, re-read each changed file once more with the union of findings in mind.
+Specifically scan for cross-file repeats, old/new code interactions, test gaps,
+error wrapping and propagation, dead code, and magic values.
+Append new findings to the same module table.
+
 ## Required Output Format
 
 Use this markdown structure exactly:
@@ -74,6 +95,7 @@ Every changed file must appear and be marked ✓.
 **Intent (this module):** ...
 **Files reviewed:** `path:line-range`, ...
 **Findings:** <table with columns Level | Severity | Confidence | Location | Issue | Why It Matters | Likely Impact | Best Fix>
+**Per-check audit:** <table with columns Level | Check | Status, where Status is `✓ findings` or `✓ scanned` for every check in the three-level framework — never blank>
 **Missing or Insufficient Tests:** ...
 **Pre-merge Cleanup:** ...
 

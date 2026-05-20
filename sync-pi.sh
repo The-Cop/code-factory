@@ -284,7 +284,9 @@ main() {
     if [[ "$CHECK_MODE" == "true" ]]; then
         local tmpdir
         tmpdir=$(mktemp -d)
-        trap 'rm -rf "$tmpdir"' EXIT
+        # Expand $tmpdir at trap-set time: it is `local` to main(), so the trap
+        # cannot resolve it later when EXIT fires after main() returns.
+        trap "rm -rf '$tmpdir'" EXIT
         local real_skills_dir="$SKILLS_DIR"
         local real_prompts_dir="$PROMPTS_DIR"
         local real_agents_dir="$AGENTS_DIR"

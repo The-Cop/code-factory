@@ -1,6 +1,6 @@
 ---
 name: "review"
-description: "Use when user says \"review pr\", \"review pull request\", \"pr review\", \"review #123\", or provides a PR number, URL, or branch name to review. Supports --codex and --claude-codex flags to delegate or cross-check with Codex."
+description: "Use when user says \"review pr\", \"review pull request\", \"pr review\", \"review #123\", or provides a PR number, URL, or branch name to review. Supports --codex and --claude-codex to delegate or cross-check with Codex, --parallel to fan out one sub-agent per review dimension, and --extended to review every line of changed files instead of just the diff hunks."
 ---
 
 # Review PR
@@ -29,14 +29,21 @@ Tokenize `$ARGUMENTS` on whitespace and classify each token:
 |-------|--------|
 | `--codex` | `MODE=codex` |
 | `--claude-codex` or `--dual` | `MODE=claude-codex` |
+| `--parallel` | `PARALLEL=true` (fan out one sub-agent per level in the Claude review) |
+| `--extended` | `SCOPE=extended` (review every line of every changed file, not just diff hunks) |
 | `--no-worktree` | `WORKTREE=false` (diff-only fallback) |
 | Pure digits | `PR_REF=<digits>` |
 | Matches `github.com/.*/pull/(\d+)` | `PR_REF=$1` |
 | Anything else, non-flag | candidate branch name → `PR_REF` |
 
 Rules:
-- Default `MODE=claude`, `WORKTREE=true`.
+- Default `MODE=claude`, `WORKTREE=true`, `PARALLEL=false`, `SCOPE=diff` (changed hunks plus immediate context).
 - `--codex` and `--claude-codex` are mutually exclusive — error and ask the user to pick one if both appear.
+- `--parallel` applies to the Claude branch only.
+  In `MODE=codex` it is a no-op and the skill warns the user.
+  In `MODE=claude-codex` only the Claude half fans out.
+- `--extended` applies to both Claude and Codex paths.
+  In `WORKTREE=false` mode it is a no-op (no file access) and the skill warns the user.
 - If multiple non-flag tokens appear, treat the first as `PR_REF` and warn about the rest.
 - If `PR_REF` is empty after parsing, fall through to current-branch detection in Step 3.
 
@@ -165,16 +172,84 @@ Record `(module-name → [files])` and update the coverage table's Module column
 ## Step 10a: Claude Review
 
 Apply the three-level framework (see `references/three-level-framework.md`) module by module.
+The review runs in two passes per module followed by a single global self-audit.
+Read the enumeration discipline section in `references/three-level-framework.md` before starting.
+
+Determine the review scope from `SCOPE`:
+
+| Scope | Read budget |
+|-------|-------------|
+| `diff` (default) | Changed hunks plus surrounding context needed to evaluate them. Typical: the function or block enclosing each hunk, plus any function the hunk calls into within the module. |
+| `extended` | Every line of every changed file in the module. Pre-existing issues outside the hunks are reportable. |
+
+### Step 10a.1: Per-module Pass 1 (Enumerate)
+
+When `PARALLEL=false` (default), for each module, in a single agent:
+
+1. Read the files in the module from `$WT_PATH` (or from the diff if `WORKTREE=false`),
+   honoring the scope budget above.
+2. For each check in the three-level framework, in order:
+   - Scan the module's read budget for that check.
+   - Append every instance found as a row in the module's findings table.
+   - If no instance is found, do not skip — mark the check as `✓ scanned` in the per-check audit table.
+3. Do not merge similar findings.
+   Do not cap.
+   Do not produce a "top issues" digest.
+4. Record findings with Level, Severity (Critical/Major/Minor), Confidence (HIGH/MEDIUM/LOW),
+   Location, Issue, Why, Impact, Best Fix.
+5. Identify missing or insufficient tests and follow-up cleanup needed before merge.
+6. Tick the file coverage checklist for each file reviewed.
+
+When `PARALLEL=true`, replace the per-module loop with one `Task` call per level,
+launched in a single message (all three sub-agents run concurrently):
+
+```
+Task(
+  subagent_type = "general-purpose",
+  description = "Review module <module-name>: Level <N>",
+  prompt = <prompt including module files, scope budget, the specific level's
+            checks from three-level-framework.md, and the required findings
+            table format from output-format.md>
+)
+```
+
+The three sub-agents per module are:
+
+| Sub-agent | Checks |
+|-----------|--------|
+| Level 1 (Intent) | Alignment, Scope creep, Missing pieces, Surprise, Test alignment |
+| Level 2 (Logic) | Control flow, Nil/null/zero, Error paths, Invariants, Concurrency, Ordering, Edge cases, Backward compatibility, Old/new interactions, Idempotency |
+| Level 3 (Quality) | Duplication, Magic values, Dead code, Abstractions, Naming, Patterns, Error handling, Security, Performance, Test quality, Test seams |
+
+Each sub-agent returns a partial findings table and a partial per-check audit table.
+Merge them into the module's single findings table and per-check audit table.
+Preserve every row — do not collapse, do not deduplicate by line.
+
+### Step 10a.2: Pass 2 (Self-audit)
+
+After Pass 1 completes for every module, run a single self-audit sweep in the main agent.
 
 For each module:
-1. Read the files in the module from `$WT_PATH` (or from the diff if `WORKTREE=false`).
-2. Walk all three levels (intent, logic, quality).
-3. Record findings with Level, Severity (Critical/Major/Minor), Confidence (HIGH/MEDIUM/LOW), Location, Issue, Why, Impact, Best Fix.
-4. Identify missing or insufficient tests.
-5. Identify follow-up cleanup needed before merge.
-6. Tick the coverage checklist for each file reviewed.
+
+1. Re-open every changed file in the module within the same scope budget.
+2. Re-read each file with Pass 1's findings in mind.
+3. Specifically scan for the categories most often missed in Pass 1:
+   - Cross-file issues: the same defect repeated across sibling files in the module.
+   - Old/new code interactions: defects exposed by the diff that live on lines the diff did not modify.
+   - Test gaps: behavior added without an assertion, or assertions that only check presence.
+   - Error wrapping and propagation: errors returned without context, dropped at a boundary, or logged and swallowed.
+   - Dead code, magic values, and stale comments left behind by the diff.
+4. Append new findings to the same module findings table.
+5. Re-tick any per-check audit row that flipped from `✓ scanned` to `✓ findings`.
+
+Pass 2 may produce zero new findings; that is the desired outcome.
+Do not pad.
+
+### Step 10a.3: Render
 
 Render output using the single-reviewer template in `references/output-format.md`.
+Include the per-check audit table for every module.
+A module is not complete in the output until every row in its audit table is ticked.
 
 ## Step 10b: Codex Review
 
@@ -233,6 +308,16 @@ If no findings exist at any level, state that and recommend approval.
 - Be constructive: every issue includes a concrete fix.
 - Every changed file must end the review marked `Reviewed: ✓`.
 - The three-level framework applies to every PR uniformly — depth does not scale down for small PRs.
+- Do not cap findings.
+  If a module has 30 minor issues, list 30 minor issues.
+- Do not collapse repeated instances.
+  If the same defect appears at five locations, write five rows with five locations.
+- Do not produce a "top issues" or "key findings" view.
+  The findings table is the report, not a digest of it.
+- Every check in the three-level framework must show a tick in the per-check audit table
+  for every module — either `✓ findings` or `✓ scanned`.
+- Re-running `/review` on the same PR with no edits must produce the same finding list.
+  If the second run surfaces a new finding, the first run violated the enumeration discipline.
 
 ## Error Handling
 
@@ -240,6 +325,9 @@ If no findings exist at any level, state that and recommend approval.
 |-------|--------|
 | `gh` not installed/authenticated | Inform user to run `gh auth login`. Stop. |
 | Both `--codex` and `--claude-codex` present | Ask user to pick one. Stop. |
+| `--parallel` with `MODE=codex` | Warn that `--parallel` is a no-op in Codex-only mode. Continue without fanout. |
+| `--extended` with `WORKTREE=false` | Warn that `--extended` is a no-op without a worktree. Continue with diff-only scope. |
+| A `--parallel` sub-agent fails | Re-run that level inline in the main agent. Do not drop the level. |
 | PR not found | Report. List recent PRs with `gh pr list --limit 5`. |
 | Empty or binary-only diff | Report "no reviewable text changes". List binary files. Cleanup worktree if created. |
 | `git worktree add` fails | Warn, fall back to diff-only mode, continue. |
