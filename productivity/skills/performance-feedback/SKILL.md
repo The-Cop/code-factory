@@ -313,4 +313,4 @@ tags: [performance-feedback, period-label-slug, fullname-slug]
 | Career plan file doesn't exist | Skip Growth & Development career plan comparison, note the gap |
 | Achievements file doesn't exist | Skip, note the gap |
 | Review period is in the future | Warn user and adjust to today as end date |
-| Feedback file already exists for this period | Read it and ask whether to overwrite or append |
+| Feedback file already exists for this period | Read it, then use `AskUserQuestion` with options "Overwrite" / "Append" / "Cancel" so the user picks without typing |

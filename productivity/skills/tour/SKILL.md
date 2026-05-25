@@ -6,7 +6,7 @@ description: >
   architecture or code structure. Supports interactive (step-by-step) and written (full document) modes.
 argument-hint: "[topic, service, or code area to tour]"
 user-invocable: true
-allowed-tools: Bash(git:*), Bash(gh:*), Bash(python3:*), Read, Grep, Glob, Task, Write, mcp__atlassian__searchConfluenceUsingCql, mcp__atlassian__getConfluencePage
+allowed-tools: Bash(git:*), Bash(gh:*), Bash(python3:*), Read, Grep, Glob, Task, Write, AskUserQuestion, mcp__atlassian__searchConfluenceUsingCql, mcp__atlassian__getConfluencePage
 ---
 
 # Code Tour
@@ -26,7 +26,21 @@ Pick mode based on user intent:
 - **Interactive** (default): User said "tour", "walk me through", "show me". Step-by-step with pauses.
 - **Written**: User said "write a tour", "document the architecture", "write up how X works", or added `--written`. Produces a complete markdown document.
 
-If unclear, ask the user which mode they prefer.
+If unclear, pick via `AskUserQuestion`:
+
+```
+AskUserQuestion(
+  questions: [{
+    header: "Tour mode",
+    question: "How would you like the tour delivered?",
+    options: [
+      {label: "Interactive (Recommended)", description: "Step-by-step, one stop per message"},
+      {label: "Written document", description: "Full markdown document I can read offline"}
+    ],
+    multiSelect: false
+  }]
+)
+```
 
 ## Step 1: Discover Code Context
 

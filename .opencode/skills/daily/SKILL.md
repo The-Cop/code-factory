@@ -434,4 +434,4 @@ The folder hierarchy (`YYYY/MM/`) naturally groups them.
 | Atlassian MCP tools not available | Skip Jira/Confluence collection in weekly summary, warn user, continue |
 | `~/google-drive/` directory doesn't exist | Skip Google Drive collection in weekly summary, warn user, continue |
 | No daily notes found for the target week | Proceed with GitHub/Jira/Confluence/Google Drive data only; warn user |
-| Weekly summary file already exists | Read it and ask whether to overwrite or skip |
+| Weekly summary file already exists | Read it, then use `AskUserQuestion` with options "Overwrite" / "Skip" / "Append" so the user picks without typing |

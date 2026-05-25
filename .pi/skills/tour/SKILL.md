@@ -20,7 +20,21 @@ Pick mode based on user intent:
 - **Interactive** (default): User said "tour", "walk me through", "show me". Step-by-step with pauses.
 - **Written**: User said "write a tour", "document the architecture", "write up how X works", or added `--written`. Produces a complete markdown document.
 
-If unclear, ask the user which mode they prefer.
+If unclear, pick via `AskUserQuestion`:
+
+```
+AskUserQuestion(
+  questions: [{
+    header: "Tour mode",
+    question: "How would you like the tour delivered?",
+    options: [
+      {label: "Interactive (Recommended)", description: "Step-by-step, one stop per message"},
+      {label: "Written document", description: "Full markdown document I can read offline"}
+    ],
+    multiSelect: false
+  }]
+)
+```
 
 ## Step 1: Discover Code Context
 

@@ -32,8 +32,26 @@ Parse `$ARGUMENTS` to determine new vs resume:
 
 Use `Glob(pattern="*.md", path="~/docs/brainstorms")` to find existing brainstorm files.
 
-For each file, read the frontmatter to extract `status` and the `# Title`.
-Present as a table and ask whether to resume one or start a new brainstorm.
+For each file, read the frontmatter to extract `status` and the `# Title`. Display the list as a table (slug, title, status, date_modified) so the user can see what exists, then ask via `AskUserQuestion`:
+
+```
+AskUserQuestion(
+  questions: [{
+    header: "Brainstorm",
+    question: "Which brainstorm do you want to work on?",
+    options: [
+      {label: "<slug-1>", description: "<title-1> — <status-1>"},
+      {label: "<slug-2>", description: "<title-2> — <status-2>"},
+      {label: "Start new", description: "Create a new brainstorm — I'll ask for the idea"}
+    ],
+    multiSelect: false
+  }]
+)
+```
+
+Cap the options at 3 existing brainstorms plus "Start new". If there are more than 3 brainstorms, prefer the most recently modified. The auto-injected "Other" option lets the user name a different brainstorm by hand.
+
+If the user picks "Start new", ask a follow-up open question for the idea description, then continue with Step 3 (New brainstorm).
 
 ## Step 3: Create or Load Brainstorm File
 
@@ -145,7 +163,7 @@ Suggested next steps by status:
 | Error | Action |
 |-------|--------|
 | `~/docs/brainstorms/` not writable | Report error and exit |
-| No arguments and no existing brainstorms | Ask for an idea description |
+| No arguments and no existing brainstorms | Ask for an idea description via a plain open-ended prompt (no `AskUserQuestion` — the answer is free-form) |
 | Slug conflicts with existing file | Append a number suffix (e.g., `my-idea-2.md`) |
 | Brainstormer agent fails | Save current file state, report error, suggest manual resume |
 | Brainstorm file corrupted or unreadable | Re-create the file with the last known content from conversation history. |
