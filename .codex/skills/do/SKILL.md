@@ -232,7 +232,7 @@ Preferences were collected in Step 1 — execute the chosen setup.
 | **Worktree + branch** | `Skill("worktree", "<slug>")` → `Skill("branch", "<slug>")` → `WORKDIR_PATH` = worktree path |
 | **Branch only** | `Skill("branch", "<slug>")` → `WORKDIR_PATH` = `REPO_ROOT` |
 | **Current branch** | Record current branch → `WORKDIR_PATH` = `REPO_ROOT` |
-| **Workspace** | `Skill("workspace", "create <ws-prefix>-<slug>")` -- delegates to `/workspace` skill (handles creation + auth setup). See 4a-workspace. |
+| **Workspace** | `workspaces create <ws-prefix>-<slug> --repo <repo> --branch <default> ...` (run_in_background). See 4a-workspace. |
 
 **For custom `base_branch`** — `/worktree` and `/branch` auto-detect main, so use direct git commands:
 
@@ -248,101 +248,25 @@ Preferences were collected in Step 1 — execute the chosen setup.
 
 **Workspace creation flags:** `--region eu-west-3 --instance-type aws:m6gd.4xlarge --shell fish`
 
-### 4a-workspace: Pre-Flight, Creation, and Handoff
+### 4a-workspace: Post-Creation Setup
 
-**Pre-flight validation BEFORE workspace creation:**
+When the background `workspaces create` completes:
 
-1. **Verify wmux is available** (preferred auth evaluator):
+1. **Construct the remote `/do` command** from stored `feature_description` + `--branch` +
+   (`--auto` if autonomous) + (`--budget <X>` if set):
+   `/do <feature_description> --branch [--auto] [--budget <X>]`
 
-   ```bash
-   which wmux 2>/dev/null
-   ```
-
-   If not installed, warn but continue -- the `/workspace` skill falls back to manual auth checks.
-
-2. **Validate workspace secrets** -- required API keys must be registered BEFORE creation
-   (secrets only propagate to future workspaces):
-
-   If `wmux` is available:
-   ```bash
-   wmux validate-workspace-config 2>&1
-   ```
-
-   If not available, check manually:
-   ```bash
-   workspaces secrets list 2>&1
-   ```
-
-   Verify `ANTHROPIC_API_KEY` and `OPENAI_API_KEY` are present and exported.
-
-   If secrets are missing, guide the user through registration:
-   ```bash
-   workspaces secrets set ANTHROPIC_API_KEY=<key> --export
-   workspaces secrets set OPENAI_API_KEY=<key> --export
-   ```
-
-   Re-validate after registration. Block until resolved -- creating a workspace without secrets
-   means Claude/Codex won't work, and secrets cannot be injected after creation.
-
-3. **Delegate workspace creation and auth to the `/workspace` skill:**
-
-   ```
-   Skill(skill="workspace", args="create <ws-prefix>-<slug> --repo <repo> --branch <branch>")
-   ```
-
-   The `/workspace` skill handles creation (background, ~10-20 min),
-   SSH agent validation, post-creation auth setup (wmux auth checks, OIDC device-code surfacing),
-   secrets validation, health check, and SSH config.
-   Wait for it to complete before proceeding.
-
-4. **Post-workspace verification** -- confirm workspace is ready before launching remote `/do`:
-
-   Verify workspace is running:
-   ```bash
-   workspaces list 2>/dev/null | grep "<ws-name>"
-   ```
-
-   Verify SSH connectivity:
-   ```bash
-   ssh -A workspace-<ws-name> "echo ok" 2>&1
-   ```
-
-   If SSH fails, run `workspaces ssh-config <ws-name>` and retry once.
-   If still failing:
-
-   ```
-   AskUserQuestion(
-     header: "Workspace connection failed",
-     question: "Cannot SSH into workspace '<ws-name>'. How to proceed?",
-     options: [
-       "Retry" -- Try SSH again after a moment,
-       "Delete and recreate" -- Delete this workspace and start over,
-       "Use branch-only mode instead" -- Fall back to working locally on a branch
-     ]
-   )
-   ```
-
-   If "Use branch-only mode": set `workdir_mode: branch_only`, proceed to Step 4b.
-
-5. **Construct the remote `/do` command** from stored `feature_description` + `--branch` +
-   (`--auto` if autonomous) + (`--budget <X>` if set).
-   **SSH in, start tmux with Claude running `/do`:**
+2. **SSH in, start tmux with Claude running `/do`:**
 
    ```bash
    REMOTE_CMD="/do <feature_description> --branch [--auto] [--budget <X>]"
    ssh -A workspace-<ws-name> "cd /workspaces/<repo> && tmux new-session -d -s main -c /workspaces/<repo> \"claude '$REMOTE_CMD'\""
    ```
 
-   Quoting matters -- escape single quotes in the feature description before embedding.
+   If SSH fails, run `workspaces ssh-config <ws-name>` then retry.
+   Quoting matters — escape single quotes in the feature description before embedding.
 
-   Verify tmux session started:
-   ```bash
-   ssh -A workspace-<ws-name> "tmux has-session -t main 2>&1"
-   ```
-
-   If tmux verification fails, retry the tmux command once.
-
-6. **Report the join command and STOP:**
+3. **Report the join command and STOP:**
 
    ```
    Workspace "<ws-name>" is ready. Claude is running `/do` on the remote session.
@@ -516,11 +440,6 @@ The orchestrator must not modify state or code.
 | Phase loop stuck | Track PLAN_REVIEW→PLAN_DRAFT and VALIDATE→EXECUTE counts; max 3 each before escalating |
 | Resume after crash | Read FEATURE.md current_phase, regenerate SNAPSHOT.md, re-enter the loop; task bundles enable task-level resume within EXECUTE |
 | Plan deviation during EXECUTE | Follow the Plan Amendment Protocol in phase-flow.md (update PLAN.md task contracts and downstream preconditions) |
-| Workspace secrets missing | Guide through `workspaces secrets set KEY=VALUE --export`. Block workspace creation until resolved. |
-| Workspace creation fails | Offer retry, delete and recreate, or fall back to branch-only mode |
-| Workspace SSH fails | Run `workspaces ssh-config <name>`, retry once, then offer branch-only fallback |
-| Remote tmux/Claude fails to start | Retry once, then provide manual SSH and tmux commands |
-| Workspace auth blocked | Run `wmux auth doctor --workspace <name>` for diagnostics, offer delete and recreate |
 
 Phase-level behaviors, adversarial protocols, EXECUTE batch loops, DONE finalization, Discovery Capture Protocol,
 and Plan Amendment Protocol are defined in [references/phase-flow.md](references/phase-flow.md).

@@ -20,43 +20,6 @@ vscode-extensions:
   - "bazelbuild.vscode-bazel"
 ```
 
-## Required Secrets
-
-These secrets MUST be registered and exported BEFORE workspace creation.
-Secrets only propagate to future workspaces -- if forgotten, the workspace must be recreated.
-
-| Secret | Required? | Purpose |
-|--------|-----------|---------|
-| `ANTHROPIC_API_KEY` | Yes | Claude Code API access on workspace |
-| `OPENAI_API_KEY` | Yes | Codex API access on workspace |
-
-### Validation
-
-```bash
-wmux validate-workspace-config
-```
-
-This checks all required secrets are present and exported. Run before every `workspaces create`.
-
-### Registration
-
-```bash
-workspaces secrets set ANTHROPIC_API_KEY=<key> --export
-workspaces secrets set OPENAI_API_KEY=<key> --export
-```
-
-The `--export` flag makes the secret available as an environment variable on the workspace.
-Without `--export`, the secret is stored as a file at `/run/user/$(id -u bits)/secrets/<key>` but not exported to the shell environment.
-
-### Verification
-
-After registration:
-
-```bash
-workspaces secrets list    # Confirm secrets are listed
-wmux validate-workspace-config    # Confirm validation passes
-```
-
 ## Secrets Management
 
 ```bash
@@ -75,33 +38,11 @@ Disallowed secret names: `PATH`, `ENV`, `USER`, `SHELL`, `HOME`.
 
 ## Claude Code in Workspaces
 
-Claude Code is pre-installed in workspaces. The `ANTHROPIC_API_KEY` workspace secret provides API access automatically.
-
-If the secret was not registered before creation:
-
-1. Delete the workspace: `workspaces delete <name>`
-2. Register the secret: `workspaces secrets set ANTHROPIC_API_KEY=<key> --export`
-3. Recreate the workspace
-
-## wmux Configuration
-
-wmux stores its configuration at `~/.config/wmux/config.json` (version 2).
-This file defines which auth checks wmux evaluates on the workspace.
-
-Default auth checks include:
-- GitHub CLI (`auth.gh`, `auth.gh_signing`)
-- Codex and Claude base login (`auth.codex`, `auth.claude`)
-- ddtool datacenters (`us1.ddbuild.io`, `us1.staging.dog`)
-- MCP servers (`mcp.*`, `claude-mcp.*`)
-- Environment secrets (`env.openai_api_key`, `env.anthropic_api_key`)
-
-Manage auth from the CLI:
+Claude Code is pre-installed in workspaces. If API key is not auto-injected:
 
 ```bash
-wmux auth status --workspace <name>              # Full auth report
-wmux auth status --workspace <name> --pending    # Only actionable items
-wmux auth open --workspace <name> --check <id>   # Resolve a specific check
-wmux auth doctor --workspace <name>              # Detailed diagnostics
+# Before workspace creation — register API key as a secret
+workspaces secrets set ANTHROPIC_APIKEY1=<key>
 ```
 
 ## Workspace Lifecycle

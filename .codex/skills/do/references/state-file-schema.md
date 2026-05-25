@@ -31,8 +31,6 @@ short_name: user-auth
 repo_root: /path/to/repo
 worktree_path: /path/to/worktrees/repo-user-auth  # set during EXECUTE setup (null if no worktree)
 workdir_mode: worktree  # worktree | branch_only | current_branch | workspace
-workspace_name: null  # set when workdir_mode is workspace (e.g., "rodrigo-user-auth")
-workspace_auth_status: null  # null | ready | auth_required | blocked — last known auth status from wmux
 base_branch: default  # default | <branch-name>
 branch: feature/user-auth
 base_ref: abc123
