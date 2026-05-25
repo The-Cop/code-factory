@@ -1,6 +1,6 @@
 {
   "name": "productivity",
-  "version": "0.47.3",
+  "version": "0.47.4",
   "description": "Productivity skills: feature development lifecycle (/do), RFC writing (/rfc), systematic debugging (/debug), documentation management (/doc), PR review (/review), guided code tours (/tour), session reflection (/reflect), session wrap-up (/wrap-up), brag document management (/brag), daily work journal (/daily), Obsidian notes management (/notes), performance feedback (/performance-feedback), Datadog workspace management (/workspace), Datadog product query (/datadog), idea brainstorming (/brainstorm), code simplification (/code-simplify), AI-friendly CLI design (/ai-cli), and skill workbench",
   "author": {
     "name": "Rodrigo Fernandes",

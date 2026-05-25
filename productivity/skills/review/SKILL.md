@@ -8,7 +8,7 @@ description: >
   and --extended to review every line of changed files instead of just the diff hunks.
 argument-hint: "[PR number, URL, or branch name] [--codex|--claude-codex] [--parallel] [--extended]"
 user-invocable: true
-allowed-tools: Bash(git:*), Bash(gh:*), Bash(node:*), Bash(command:*), Read, Grep, Glob, Task, AskUserQuestion
+allowed-tools: Bash(git:*), Bash(gh:*), Bash(node:*), Bash(command:*), Bash(sleep:*), Read, Grep, Glob, Task, AskUserQuestion, Skill
 ---
 
 # Review PR
@@ -261,21 +261,72 @@ A module is not complete in the output until every row in its audit table is tic
 
 ## Step 10b: Codex Review
 
-Delegate via the `codex:codex-rescue` subagent.
+Delegate to the `codex:codex-rescue` subagent in background mode, then poll for completion.
 The exact prompt template lives in `references/codex-delegation.md`.
+
+A foreground Codex call dies at the default 120s Bash timeout because real PRs take 3-15+ minutes.
+Background mode forks a detached worker and returns in seconds, so the Bash timeout never fires.
+
+### Step 10b.1: Delegate (background)
 
 ```
 Task(
   subagent_type = "codex:codex-rescue",
   description = "Codex PR review: #<PR_NUMBER>",
-  prompt = <template with PR_TITLE, PR Intent, refs, worktree path, framework, output format, and full PR diff>
+  prompt = "--background\n\n" + <template with PR_TITLE, PR Intent, refs, worktree path, framework, output format, and full PR diff>
 )
 ```
 
-Pass through Codex's stdout verbatim.
-Do not paraphrase or add commentary before or after.
+The literal first line `--background` followed by a blank line is a routing flag the rescue subagent strips before forwarding to `codex-companion task --background`.
+The Task returns within ~5-15 seconds with stdout matching:
 
-**If Codex returns empty stdout** (the rescue subagent's failure signal):
+```
+<title> started in the background as <jobId>. Check /codex:status <jobId> for progress.
+```
+
+### Step 10b.2: Parse jobId
+
+Match the regex `started in the background as ([a-zA-Z0-9_-]+)\b` against the rescue stdout.
+Bind the captured group to `JOB_ID`.
+
+If no match (or the rescue returns empty stdout), apply the Codex empty-stdout fallback below and skip Steps 10b.3 and 10b.4.
+
+### Step 10b.3: Poll for terminal state
+
+Loop until terminal state. Each iteration:
+
+1. `Skill(skill="codex:status", args="<JOB_ID> --wait --timeout-ms 100000")`.
+   Server-side `--wait` blocks until terminal or 100s elapse, safely under the 120s Bash kill.
+2. Parse `Status:` with the regex `/Status:\s+(queued|running|completed|failed|cancelled)\b/i`.
+3. Branch on the captured status:
+
+| Status | Action |
+|--------|--------|
+| `completed` | Exit loop. Proceed to Step 10b.4. |
+| `failed` | Apply Codex empty-stdout fallback. Stop. |
+| `cancelled` | Apply Codex empty-stdout fallback. Stop. |
+| `queued` | Continue loop. Increment a `queued_streak` counter. |
+| `running` | Continue loop. Reset `queued_streak` to 0. |
+| Unparseable | Apply Codex empty-stdout fallback. Stop. |
+
+Watchdog: if `queued_streak` reaches 6 (the job never started running), report `Codex job <JOB_ID> never started` and apply the fallback.
+
+Progress note: every 6 iterations (~10 min elapsed), emit a single line to the user:
+`Codex job <JOB_ID> still running after ~N minutes; continuing to poll`.
+
+There is no upper iteration bound — the loop exits only on a terminal state, the queued watchdog, or a parse failure.
+The job is never auto-cancelled; the user can recover the result later via `/codex:result <JOB_ID>`.
+
+### Step 10b.4: Fetch result
+
+`Skill(skill="codex:result", args="<JOB_ID>")`
+
+Pass Codex's stdout through verbatim.
+Do not paraphrase, summarize, or add commentary before or after.
+
+### Codex empty-stdout fallback
+
+Shared by Steps 10b.2, 10b.3, and 10b.4:
 - `MODE=codex` → ask the user via `AskUserQuestion` whether to retry with Claude.
 - `MODE=claude-codex` → continue with Claude-only output, prefixed with `Codex unavailable; Claude-only`.
 
@@ -340,6 +391,10 @@ If no findings exist at any level, state that and recommend approval.
 | Empty or binary-only diff | Report "no reviewable text changes". List binary files. Cleanup worktree if created. |
 | `git worktree add` fails | Warn, fall back to diff-only mode, continue. |
 | `codex` CLI missing in Codex mode | Warn and fall back to Claude (see Step 2). |
-| Codex subagent returns empty stdout | Report failure. Offer retry with Claude or continue Claude-only in dual mode. |
+| Codex rescue returns empty stdout (delegate step) | Report failure. Apply Codex empty-stdout fallback. |
+| Rescue stdout missing jobId pattern | Report "Codex review failed (no jobId)". Apply Codex empty-stdout fallback. |
+| `/codex:status` output cannot be parsed | Treat as failure. Apply Codex empty-stdout fallback. |
+| Codex job status `failed` or `cancelled` | Report `Codex job <id> <status>`. Apply Codex empty-stdout fallback. |
+| Codex job remains `queued` for 6 consecutive polls | Report worker-launch failure. Apply Codex empty-stdout fallback. |
 | Stale worktree from prior run | `git worktree remove --force` then retry (built into Step 5). |
 | Network/API failure | Report `gh` error. Cleanup worktree. Let user retry. |

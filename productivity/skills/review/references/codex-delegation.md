@@ -6,17 +6,58 @@ Its only job is to forward the prompt to Codex and return Codex's stdout verbati
 
 ## Invocation
 
+Run Codex in background mode and poll the job until it completes.
+A foreground call dies at the default 120s Bash timeout because real PRs take 3-15+ minutes;
+`--background` forks a detached worker and returns in seconds, then `/codex:status` and `/codex:result` recover the output.
+
+### 1. Delegate (background)
+
 ```
 Task(
   subagent_type = "codex:codex-rescue",
   description = "Codex PR review: #<PR_NUMBER>",
-  prompt = <see template below>
+  prompt = "--background\n\n" + <see template below>
 )
 ```
 
-Do not pass `--write`, `--background`, `--wait`, `--resume`, or `--fresh`.
+The literal first line `--background` followed by a blank line is a routing flag the `codex:codex-rescue` subagent strips before forwarding to `codex-companion task --background`.
+Do not pass `--write`, `--wait`, `--resume`, or `--fresh`.
 The prompt's "Review only" opening tells the rescue subagent to omit `--write`.
-Foreground (default) is correct for review.
+
+The Task returns within ~5-15 seconds with stdout matching:
+
+```
+<title> started in the background as <jobId>. Check /codex:status <jobId> for progress.
+```
+
+### 2. Parse jobId
+
+Match the regex `started in the background as ([a-zA-Z0-9_-]+)\b` against the rescue stdout.
+On no match, treat as a Codex failure (see Fallback rules).
+
+### 3. Poll
+
+Loop calling `Skill(skill="codex:status", args="<jobId> --wait --timeout-ms 100000")`.
+Each call blocks server-side for up to 100s, staying under the 120s Bash kill, and returns as soon as the job reaches `completed`, `failed`, or `cancelled`.
+Parse `Status:` with `/Status:\s+(queued|running|completed|failed|cancelled)\b/i`.
+
+| Status | Action |
+|--------|--------|
+| `queued` | Continue polling. If 6 consecutive polls show `queued`, treat as a worker-launch failure. |
+| `running` | Continue polling. Reset the queued-streak counter. |
+| `completed` | Proceed to Fetch. |
+| `failed` | Fallback. |
+| `cancelled` | Fallback. |
+| Unparseable | Fallback. |
+
+Every 6 iterations (~10 min elapsed), emit one status line so the user knows the job is still progressing.
+There is no upper iteration bound — keep polling until terminal state, the queued watchdog, or a parse failure.
+Do **not** invoke `/codex:cancel` on timeout — leave the job alive so the user can recover the result.
+
+### 4. Fetch
+
+`Skill(skill="codex:result", args="<jobId>")`.
+Pass the stdout through verbatim.
 
 ## Prompt template
 
@@ -114,19 +155,33 @@ Every changed file must appear and be marked ✓.
 ## Pass-through rules
 
 - Return Codex's stdout verbatim.
+  The verbatim source is the output of `Skill(skill="codex:result", args="<jobId>")` once the job has terminal state `completed`.
 - Do not paraphrase, summarize, or add commentary before or after.
-- If stdout is empty, treat that as a Codex failure (the rescue subagent returns nothing on failure).
+- Do not fetch `/codex:result` for non-`completed` terminal states.
+  The partial output is unreliable and the fallback header is more useful to the user.
 
 ## Fallback rules
 
 | Failure mode | Action |
 |--------------|--------|
 | `command -v codex` returns non-zero | Warn: "Codex CLI not installed. Falling back to Claude review." Skip Codex delegation. |
-| Codex subagent returns empty stdout | Report: "Codex review failed." In `--codex` mode, ask user if they want to retry with Claude. In `--claude-codex` mode, continue with Claude-only output and add the header note `Codex unavailable; Claude-only`. |
+| Rescue subagent returns empty stdout | Report: "Codex review failed (delegation)." |
+| Rescue stdout missing jobId pattern | Report: "Codex review failed (no jobId)." |
+| Codex job status `failed` | Report: "Codex job <jobId> failed." |
+| Codex job status `cancelled` | Report: "Codex job <jobId> cancelled." |
+| Codex job remains `queued` for 6 consecutive polls | Report: "Codex job <jobId> never started." |
+| `/codex:status` output cannot be parsed | Report: "Codex status unparseable." |
 | Worktree creation failed | Pass `Worktree: diff-only fallback` to Codex and explain in the prompt that no live file access is available. |
+
+For every failure mode in `--codex` mode, ask the user via `AskUserQuestion` whether to retry with Claude.
+In `--claude-codex` mode, continue with Claude-only output prefixed with `Codex unavailable; Claude-only`.
 
 ## Why this pattern
 
 - The `codex:codex-rescue` subagent is the only sanctioned entry point for arbitrary Codex prompts from another skill.
 - The `/codex:review` command targets local git state but cannot be invoked from another skill's runtime; replicating its logic via the subagent gives equivalent capability.
 - Read-only enforcement comes from prompt content (the rescue subagent uses `--write` only when the request implies edits).
+- Background mode is mandatory:
+  Codex high-effort PR review routinely exceeds the default 120s Bash timeout.
+  Foreground is reserved for short rescue prompts;
+  PR review is not in that regime.
