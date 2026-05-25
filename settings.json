@@ -5,6 +5,9 @@
     "ENABLE_TOOL_SEARCH": "true",
     "CLAUDE_CODE_DISABLE_FEEDBACK_SURVEY": "1",
     "DISABLE_NON_ESSENTIAL_MODEL_CALLS": "1",
+    "DISABLE_TELEMETRY": "1",
+    "DO_NOT_TRACK": "1",
+    "DISABLE_GROWTHBOOK": "1",
     "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1",
     "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1",
     "APPGATE_AUTOLAUNCH": "true"
@@ -161,9 +164,7 @@
     "chrome-devtools",
     "slack"
   ],
-  "disabledMcpjsonServers": [
-    "datadog"
-  ],
+  "disabledMcpjsonServers": ["datadog"],
   "hooks": {
     "PreToolUse": [
       {
