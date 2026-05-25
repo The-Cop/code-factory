@@ -164,7 +164,9 @@
     "chrome-devtools",
     "slack"
   ],
-  "disabledMcpjsonServers": ["datadog"],
+  "disabledMcpjsonServers": [
+    "datadog"
+  ],
   "hooks": {
     "PreToolUse": [
       {
