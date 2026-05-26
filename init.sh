@@ -617,11 +617,11 @@ configure_pi_aigateway() {
     fi
     if ! ddtool auth token rapid-ai-platform --datacenter us1.prod.dog >/dev/null 2>&1; then
         if [[ ! -t 0 ]]; then
-            echo "  SKIP  ddtool not authed and shell is non-interactive (run: ddtool auth login rapid-ai-platform --datacenter us1.prod.dog)"
+            echo "  SKIP  ddtool not authed and shell is non-interactive (run: ddtool auth login --datacenter us1.prod.dog)"
             return 0
         fi
         echo "  ddtool not authed for rapid-ai-platform; running auth login..."
-        if ! ddtool auth login rapid-ai-platform --datacenter us1.prod.dog; then
+        if ! ddtool auth login --datacenter us1.prod.dog; then
             echo "  SKIP  ddtool auth login failed"
             return 0
         fi
