@@ -120,17 +120,23 @@ for i in "${!SRCS[@]}"; do
         # symlink as a regular copy. Safe to replace with a symlink.
         rm "$dest"
     elif [[ -f "$dest" ]]; then
-        # Regular file with different content — preserve user edits in .bak
-        # before relinking, then error so the user can reconcile manually.
+        # Regular file with different content. Claude Code rewrites
+        # ~/.claude/settings.json as a regular file when it edits settings, so
+        # back up and replace instead of failing. Other destinations keep the
+        # stricter "back up and skip" behaviour so user edits are preserved.
         backup="${dest}.bak.$(date +%Y%m%d%H%M%S)"
-        if mv "$dest" "$backup"; then
-            errors+=("$src -> $dest: dest differed from source; backed up to $backup")
-            echo "FAIL  $dest differed from source, backed up to $backup and skipped"
-        else
+        if ! mv "$dest" "$backup"; then
             errors+=("$src -> $dest: dest differed from source and backup failed")
             echo "FAIL  could not back up $dest, skipping"
+            continue
         fi
-        continue
+        if [[ "$dest" == "$HOME/.claude/settings.json" ]]; then
+            echo "WARN  $dest differed from source, backed up to $backup and relinking"
+        else
+            errors+=("$src -> $dest: dest differed from source; backed up to $backup")
+            echo "FAIL  $dest differed from source, backed up to $backup and skipped"
+            continue
+        fi
     elif [[ -e "$dest" ]]; then
         errors+=("$src -> $dest: destination already exists (not a regular file)")
         echo "FAIL  $dest already exists and is not a regular file, cannot link"
@@ -538,7 +544,21 @@ echo "Linked ${#pi_new_manifest[@]} entries to ~/.pi/agent/. Cleaned $pi_cleaned
 # Install curated pi.dev packages
 echo ""
 echo "Installing Pi packages..."
-if command -v pi &>/dev/null; then
+if ! command -v pi &>/dev/null; then
+    if command -v npm &>/dev/null; then
+        echo "  pi CLI not found; installing @earendil-works/pi-coding-agent..."
+        if npm i -g @earendil-works/pi-coding-agent 2>&1 | tail -3; then
+            echo "  OK  pi CLI installed"
+        else
+            echo "  WARN  pi CLI install failed"
+        fi
+    else
+        echo "  SKIP  pi CLI not found and npm unavailable (install Node.js, then re-run init)"
+    fi
+fi
+if ! command -v pi &>/dev/null; then
+    echo "  SKIP  pi CLI still not available"
+else
     # Datadog packages: clone-or-update the marketplace repo, then install by local path.
     # The repo root is intentionally a catalog, not a pi package -- each subdir under
     # packages/ must be installed individually.
@@ -577,8 +597,6 @@ if command -v pi &>/dev/null; then
             fi
         done
     fi
-else
-    echo "  SKIP  pi CLI not found (install via: npm i -g @earendil-works/pi-coding-agent)"
 fi
 
 # Configure Pi to use Datadog AI Gateway (opt out via PI_AUTOCONFIG=0)
@@ -598,8 +616,20 @@ configure_pi_aigateway() {
         return 0
     fi
     if ! ddtool auth token rapid-ai-platform --datacenter us1.prod.dog >/dev/null 2>&1; then
-        echo "  SKIP  ddtool not authed (run: ddtool auth login rapid-ai-platform --datacenter us1.prod.dog)"
-        return 0
+        if [[ ! -t 0 ]]; then
+            echo "  SKIP  ddtool not authed and shell is non-interactive (run: ddtool auth login rapid-ai-platform --datacenter us1.prod.dog)"
+            return 0
+        fi
+        echo "  ddtool not authed for rapid-ai-platform; running auth login..."
+        if ! ddtool auth login rapid-ai-platform --datacenter us1.prod.dog; then
+            echo "  SKIP  ddtool auth login failed"
+            return 0
+        fi
+        if ! ddtool auth token rapid-ai-platform --datacenter us1.prod.dog >/dev/null 2>&1; then
+            echo "  SKIP  ddtool auth still not valid after login"
+            return 0
+        fi
+        echo "  OK  ddtool authed for rapid-ai-platform"
     fi
 
     local cfg="$PI_GLOBAL_DIR/models.json"
