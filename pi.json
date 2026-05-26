@@ -1,9 +1,9 @@
 {
   "providers": {
     "datadog-ai-gateway": {
-      "baseUrl": "https://ai-gateway.us1.prod.dog/v1",
+      "baseUrl": "https://ai-gateway.{{aigw_dc}}/v1",
       "api": "openai-responses",
-      "apiKey": "!ddtool auth token rapid-ai-platform --datacenter us1.prod.dog",
+      "apiKey": "!ddtool auth token rapid-ai-platform --datacenter {{aigw_dc}}",
       "headers": {
         "source": "pi",
         "org-id": "2",
@@ -18,9 +18,9 @@
       ]
     },
     "datadog-ai-gateway-anthropic": {
-      "baseUrl": "https://ai-gateway.us1.prod.dog",
+      "baseUrl": "https://ai-gateway.{{aigw_dc}}",
       "api": "anthropic-messages",
-      "apiKey": "!ddtool auth token rapid-ai-platform --datacenter us1.prod.dog",
+      "apiKey": "!ddtool auth token rapid-ai-platform --datacenter {{aigw_dc}}",
       "authHeader": true,
       "headers": {
         "source": "pi",

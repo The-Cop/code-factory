@@ -615,17 +615,28 @@ configure_pi_aigateway() {
         echo "  SKIP  ddtool not installed (see https://datadoghq.atlassian.net/wiki/spaces/~5e9d84f05f50bf0c0b460b93/pages/6699122806)"
         return 0
     fi
-    if ! ddtool auth token rapid-ai-platform --datacenter us1.prod.dog >/dev/null 2>&1; then
+    # Choose AI gateway datacenter. Workspaces cannot reach prod vault, so they
+    # use staging by default. Override with DD_AIGW_DC to force a specific DC.
+    local aigw_dc="${DD_AIGW_DC:-}"
+    if [[ -z "$aigw_dc" ]]; then
+        if [[ "$(hostname 2>/dev/null)" == workspace-* ]]; then
+            aigw_dc="us1.staging.dog"
+        else
+            aigw_dc="us1.prod.dog"
+        fi
+    fi
+    echo "  using ai-gateway datacenter: $aigw_dc"
+    if ! ddtool auth token rapid-ai-platform --datacenter "$aigw_dc" >/dev/null 2>&1; then
         if [[ ! -t 0 ]]; then
-            echo "  SKIP  ddtool not authed and shell is non-interactive (run: ddtool auth login --datacenter us1.prod.dog)"
+            echo "  SKIP  ddtool not authed and shell is non-interactive (run: ddtool auth login --datacenter $aigw_dc)"
             return 0
         fi
         echo "  ddtool not authed for rapid-ai-platform; running auth login..."
-        if ! ddtool auth login --datacenter us1.prod.dog; then
+        if ! ddtool auth login --datacenter "$aigw_dc"; then
             echo "  SKIP  ddtool auth login failed"
             return 0
         fi
-        if ! ddtool auth token rapid-ai-platform --datacenter us1.prod.dog >/dev/null 2>&1; then
+        if ! ddtool auth token rapid-ai-platform --datacenter "$aigw_dc" >/dev/null 2>&1; then
             echo "  SKIP  ddtool auth still not valid after login"
             return 0
         fi
@@ -656,8 +667,8 @@ configure_pi_aigateway() {
     fi
 
     local template
-    if ! template=$(jq --arg email "$email" --arg team "$team" \
-        '(.. | strings) |= (gsub("\\{\\{email\\}\\}"; $email) | gsub("\\{\\{team\\}\\}"; $team))' \
+    if ! template=$(jq --arg email "$email" --arg team "$team" --arg aigw_dc "$aigw_dc" \
+        '(.. | strings) |= (gsub("\\{\\{email\\}\\}"; $email) | gsub("\\{\\{team\\}\\}"; $team) | gsub("\\{\\{aigw_dc\\}\\}"; $aigw_dc))' \
         "$pi_config" 2>/dev/null); then
         errors+=("pi: failed to render $pi_config")
         echo "  FAIL  could not render $pi_config"
