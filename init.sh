@@ -617,9 +617,10 @@ configure_pi_aigateway() {
     fi
     # Choose AI gateway datacenter. Workspaces cannot reach prod vault, so they
     # use staging by default. Override with DD_AIGW_DC to force a specific DC.
+    # `IN_WORKSPACE=1` is set by the workspaces daemon via /etc/fish/conf.d.
     local aigw_dc="${DD_AIGW_DC:-}"
     if [[ -z "$aigw_dc" ]]; then
-        if [[ "$(hostname 2>/dev/null)" == workspace-* ]]; then
+        if [[ "${IN_WORKSPACE:-}" == "1" ]]; then
             aigw_dc="us1.staging.dog"
         else
             aigw_dc="us1.prod.dog"
