@@ -212,7 +212,7 @@ sync-pi: ## Sync skills, prompts, agents, and MCP extension to Pi config directo
 check-pi-sync: ## Validate Pi sync is up-to-date
 	@./sync-pi.sh --check
 
-sync-mcp: ## Sync MCP servers from mcp.json to Claude Code and opencode.jsonc
+sync-mcp: ## Sync MCP servers from mcp.json to opencode.jsonc
 	@./sync-mcp.sh
 
 check-mcp-sync: ## Validate opencode.jsonc MCP block is up-to-date with mcp.json

@@ -423,6 +423,15 @@ fi
 echo ""
 echo "Linked ${#codex_new_manifest[@]} entries to ~/.codex/. Cleaned $codex_cleaned stale entries."
 
+echo ""
+echo "Installing MCP servers into Codex config..."
+if "$SCRIPT_DIR/install-codex-mcp.sh"; then
+    echo "  OK  Codex MCP config"
+else
+    errors+=("mcp: failed to install Codex MCP config")
+    echo "  FAIL  Codex MCP config"
+fi
+
 # Generate Pi assets in the repo
 echo ""
 echo "Syncing Pi skills, prompts, agents, and MCP extension..."

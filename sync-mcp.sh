@@ -4,7 +4,7 @@
 #
 # mcp.json is the single source of truth for MCP server definitions.
 # This script only touches local files (opencode.jsonc).
-# To install MCPs into Claude Code, run `make install` (init.sh).
+# To install MCPs into Claude Code and Codex, run `make install` (init.sh).
 #
 # Usage:
 #   ./sync-mcp.sh          # Regenerate opencode.jsonc MCP block

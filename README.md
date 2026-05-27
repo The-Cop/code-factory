@@ -206,12 +206,12 @@ User descriptions are wrapped in `<feature_request>` tags to prevent prompt inje
    - Symlinks root configs:
 
      | Source | Destination |
-     |--------|-------------|
-     | `mcp.json` | `~/.mcp.json` |
+     |-|-|
      | `settings.json` | `~/.claude/settings.json` |
      | `opencode.jsonc` | `~/.config/opencode/opencode.jsonc` |
      | `claude/CLAUDE.md` | `~/.claude/CLAUDE.md` |
 
+   - Installs MCP servers from `mcp.json` into Claude Code and Codex, and regenerates the OpenCode MCP block.
    - Symlinks files from `hooks/` into `~/.claude/hooks/`.
    - Regenerates `.opencode/` assets by running `./sync-opencode.sh`.
    - Symlinks generated `.opencode/{skills,agents,commands,plugins}` into `~/.config/opencode/`.
@@ -244,7 +244,8 @@ OpenCode CLI configuration in JSONC. Includes provider setup (Anthropic, OpenAI,
 
 ### `mcp.json` (MCP servers)
 
-Declares Atlassian, Datadog, and chrome-devtools MCP servers for Claude Code.
+Declares MCP servers for Claude Code, OpenCode, Codex, and pi.dev.
+`init.sh` installs these into Claude Code and Codex, `sync-mcp.sh` regenerates the OpenCode block, and `sync-pi.sh` generates the Pi MCP wrapper manifest.
 
 ### `sync-opencode.sh`
 
@@ -253,6 +254,11 @@ Generates `.opencode/skills`, `.opencode/agents`, and `.opencode/commands` from 
 ### `sync-codex.sh`
 
 Generates `.codex/skills` (with collapsed single-line frontmatter and per-skill `agents/openai.yaml` metadata) and `.codex/agents/*.toml` for [OpenAI Codex](https://github.com/openai/codex). Stale-check mode (`--check`).
+
+### `install-codex-mcp.sh`
+
+Updates `~/.codex/config.toml` from `mcp.json`, preserving unrelated Codex settings and unrelated MCP servers.
+The generated section is marked in the TOML file so rerunning `./init.sh` refreshes managed servers idempotently.
 
 ### `sync-pi.sh` and `pi-extensions/`
 
