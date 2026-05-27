@@ -259,6 +259,7 @@ Generates `.codex/skills` (with collapsed single-line frontmatter and per-skill 
 
 Updates `~/.codex/config.toml` from `mcp.json`, preserving unrelated Codex settings and unrelated MCP servers.
 The generated section is marked in the TOML file so rerunning `./init.sh` refreshes managed servers idempotently.
+When an MCP server declares an OAuth `callbackPort`, the script also writes Codex's global MCP OAuth callback port and localhost callback URL so OAuth providers with fixed redirect URIs can complete login.
 
 ### `sync-pi.sh` and `pi-extensions/`
 

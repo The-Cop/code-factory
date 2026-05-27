@@ -20,6 +20,7 @@ import json
 import re
 import sys
 from pathlib import Path
+from urllib.parse import urlparse
 
 MCP_JSON = Path(sys.argv[1])
 CODEX_CONFIG = Path(sys.argv[2])
@@ -65,7 +66,7 @@ def is_managed_section(line, prefixes):
     return any(section == prefix or section.startswith(prefix + ".") for prefix in prefixes)
 
 
-def strip_managed_sections(content, names):
+def strip_managed_sections(content, names, root_keys):
     marker_re = re.compile(
         r"\n?" + re.escape(START) + r"\n.*?\n" + re.escape(END) + r"\n?",
         re.DOTALL,
@@ -75,11 +76,15 @@ def strip_managed_sections(content, names):
     prefixes = generated_section_prefixes(names)
     kept = []
     skipping = False
+    in_table = False
     for line in content.splitlines():
         if re.match(r"\s*\[[^\]]+\]\s*$", line):
+            in_table = True
             skipping = is_managed_section(line, prefixes)
             if skipping:
                 continue
+        if not in_table and any(re.match(rf"\s*{re.escape(key)}\s*=", line) for key in root_keys):
+            continue
         if skipping:
             continue
         kept.append(line)
@@ -94,8 +99,57 @@ def oauth_value(oauth, *names):
     return None
 
 
+def codex_oauth_callback_config(servers):
+    ports = []
+    urls = []
+    for name, cfg in servers.items():
+        oauth = cfg.get("oauth") or {}
+        port = oauth_value(oauth, "callbackPort", "callback_port")
+        url = oauth_value(oauth, "callbackUrl", "callback_url")
+
+        if port not in (None, ""):
+            try:
+                port = int(port)
+            except (TypeError, ValueError):
+                raise ValueError(f"{name}: oauth callbackPort must be an integer") from None
+            if not 1 <= port <= 65535:
+                raise ValueError(f"{name}: oauth callbackPort must be between 1 and 65535")
+            ports.append(port)
+
+        if url not in (None, ""):
+            urls.append(str(url))
+
+    unique_ports = sorted(set(ports))
+    unique_urls = sorted(set(urls))
+    if len(unique_ports) > 1:
+        raise ValueError("Codex only supports one global MCP OAuth callback port")
+    if len(unique_urls) > 1:
+        raise ValueError("Codex only supports one global MCP OAuth callback URL")
+
+    port = unique_ports[0] if unique_ports else None
+    url = unique_urls[0] if unique_urls else None
+
+    if url and port is None:
+        parsed = urlparse(url)
+        if parsed.port is None:
+            raise ValueError("Codex MCP OAuth callback URL must include a port")
+        port = parsed.port
+
+    if port is not None and not url:
+        url = f"http://localhost:{port}/callback"
+
+    return port, url
+
+
 def generate_block(servers):
     lines = [START]
+    callback_port, callback_url = codex_oauth_callback_config(servers)
+    if callback_port is not None:
+        lines.append(f"mcp_oauth_callback_port = {toml_value(callback_port)}")
+    if callback_url:
+        lines.append(f"mcp_oauth_callback_url = {toml_value(callback_url)}")
+    if callback_port is not None or callback_url:
+        lines.append("")
 
     for index, (name, cfg) in enumerate(servers.items()):
         if index:
@@ -150,7 +204,13 @@ if not isinstance(servers, dict):
     raise TypeError("mcpServers must be an object")
 
 existing = CODEX_CONFIG.read_text() if CODEX_CONFIG.exists() else ""
-base = strip_managed_sections(existing, set(servers))
+callback_port, callback_url = codex_oauth_callback_config(servers)
+managed_root_keys = []
+if callback_port is not None:
+    managed_root_keys.append("mcp_oauth_callback_port")
+if callback_url:
+    managed_root_keys.append("mcp_oauth_callback_url")
+base = strip_managed_sections(existing, set(servers), managed_root_keys)
 block = generate_block(servers)
 new_content = f"{base}\n\n{block}" if base else block
 
