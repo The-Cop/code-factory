@@ -1,0 +1,19 @@
+# Default-allow Codex execution posture managed by code-factory.
+approval_policy = "never"
+sandbox_mode = "workspace-write"
+
+[sandbox_workspace_write]
+network_access = true
+writable_roots = [
+  "/Users/rodrigo.fernandes/dev",
+  "/Users/rodrigo.fernandes/dd",
+  "/Users/rodrigo.fernandes/go",
+  "/Users/rodrigo.fernandes/Downloads",
+  "~/dev",
+  "~/dd",
+  "~/go",
+  "~/Downloads",
+  "/tmp",
+  "/private/tmp",
+  "/private/var/tmp",
+]

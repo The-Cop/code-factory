@@ -8,7 +8,8 @@
 #   3. Symlinks Claude Code hooks, rules, and git hooks.
 #   4. Runs sync-opencode.sh to generate OpenCode assets in the repo.
 #   5. Symlinks .opencode/{skills,agents,commands} into ~/.config/opencode/.
-#   6. Updates Claude Code CLI and all installed marketplace plugins.
+#   6. Installs managed Codex config, skills, agents, and execpolicy rules.
+#   7. Updates Claude Code CLI and all installed marketplace plugins.
 #
 # Behavior:
 #   - If the destination is an existing symlink, it is removed and re-created.
@@ -391,6 +392,23 @@ if [[ -d "$CODEX_LOCAL_DIR/agents" ]]; then
             echo "  LINK  agents/$agent_name"
         fi
     done < <(find "$CODEX_LOCAL_DIR/agents" -name "*.toml" | sort)
+fi
+
+# Symlink each Codex execpolicy rule file
+CODEX_RULES_SRC_DIR="$SCRIPT_DIR/codex/rules"
+if [[ -d "$CODEX_RULES_SRC_DIR" ]]; then
+    mkdir -p "$CODEX_GLOBAL_DIR/rules"
+    while IFS= read -r rule_src; do
+        rule_name=$(basename "$rule_src")
+        rule_dest="$CODEX_GLOBAL_DIR/rules/$rule_name"
+        if ! ln -sf "$rule_src" "$rule_dest"; then
+            errors+=("$rule_src -> $rule_dest: ln -sf failed")
+            echo "  FAIL  rules/$rule_name"
+        else
+            codex_new_manifest+=("$rule_dest")
+            echo "  LINK  rules/$rule_name"
+        fi
+    done < <(find "$CODEX_RULES_SRC_DIR" -name "*.rules" | sort)
 fi
 
 # Codex manifest cleanup: remove stale global files

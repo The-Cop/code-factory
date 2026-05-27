@@ -215,6 +215,7 @@ User descriptions are wrapped in `<feature_request>` tags to prevent prompt inje
    - Symlinks files from `hooks/` into `~/.claude/hooks/`.
    - Regenerates `.opencode/` assets by running `./sync-opencode.sh`.
    - Symlinks generated `.opencode/{skills,agents,commands,plugins}` into `~/.config/opencode/`.
+   - Symlinks generated `.codex/{skills,agents}` and managed `codex/rules/*.rules` into `~/.codex/`.
    - Symlinks `.githooks/*` into `.git/hooks/` for this local clone.
 
    If a destination already exists as a regular file, bootstrap records an error and exits non-zero so you can fix the conflict explicitly.
@@ -229,7 +230,7 @@ User descriptions are wrapped in `<feature_request>` tags to prevent prompt inje
 
 - Source of truth is under `productivity/` and `git/`; do not edit generated files under `.opencode/` directly.
 - `make all` runs checks (`make check`) and config linting (`make lint`).
-- `make check` also verifies OpenCode sync freshness (`./sync-opencode.sh --check`).
+- `make check` also verifies OpenCode/Codex/Pi sync freshness and managed Codex config/rules.
 - Re-run `./init.sh` after changing local bootstrap-managed files.
 
 ## Configuration Files
@@ -255,11 +256,17 @@ Generates `.opencode/skills`, `.opencode/agents`, and `.opencode/commands` from 
 
 Generates `.codex/skills` (with collapsed single-line frontmatter and per-skill `agents/openai.yaml` metadata) and `.codex/agents/*.toml` for [OpenAI Codex](https://github.com/openai/codex). Stale-check mode (`--check`).
 
+### `codex/config.toml` and `codex/rules/`
+
+Managed Codex defaults. `codex/config.toml` sets Codex to default-allow command execution with `approval_policy = "never"` and a workspace-write sandbox with network access plus the same extra writable directories used by Claude Code.
+
+`codex/rules/code-factory.rules` forbids concrete dangerous command prefixes such as system mutation, destructive recursive deletion of high-value roots, history-rewriting git operations, and global package installs. Codex execpolicy rules are prefix-based, not full shell-string scanners, so broad shell commands like `zsh -lc "..."` are not inspected the same way Claude's Bash hook can inspect command text.
+
 ### `install-codex-mcp.sh`
 
-Updates `~/.codex/config.toml` from `mcp.json`, preserving unrelated Codex settings and unrelated MCP servers.
-The generated section is marked in the TOML file so rerunning `./init.sh` refreshes managed servers idempotently.
-When an MCP server declares an OAuth `callbackPort`, the script also writes Codex's global MCP OAuth callback port and localhost callback URL so OAuth providers with fixed redirect URIs can complete login.
+Updates `~/.codex/config.toml` from `codex/config.toml` and `mcp.json`, preserving unrelated Codex settings and unrelated MCP servers.
+The generated sections are marked in the TOML file so rerunning `./init.sh` refreshes managed settings and servers idempotently.
+When an MCP server declares an OAuth `callbackPort`, the script also writes Codex's global MCP OAuth callback port and localhost callback URL as top-level TOML settings so OAuth providers with fixed redirect URIs can complete login.
 
 ### `sync-pi.sh` and `pi-extensions/`
 

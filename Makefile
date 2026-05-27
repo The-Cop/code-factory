@@ -1,4 +1,4 @@
-.PHONY: all install lint check check-frontmatter check-agents check-refs check-agent-refs check-descriptions check-structure check-versions check-opencode-sync sync-opencode check-codex-sync sync-codex check-pi-sync sync-pi check-mcp-sync sync-mcp help
+.PHONY: all install lint check check-frontmatter check-agents check-refs check-agent-refs check-descriptions check-structure check-versions check-opencode-sync sync-opencode check-codex-sync sync-codex check-codex-config check-codex-rules check-pi-sync sync-pi check-mcp-sync sync-mcp help
 
 all: check lint ## Run all checks (frontmatter, agents, refs, structure, plugins, lint)
 
@@ -206,6 +206,12 @@ sync-codex: ## Sync skills and agents to Codex config directory
 check-codex-sync: ## Validate Codex sync is up-to-date
 	@./sync-codex.sh --check
 
+check-codex-config: ## Validate managed Codex config generation
+	@bash ./scripts/check-codex-config.sh
+
+check-codex-rules: ## Validate managed Codex execpolicy rules
+	@bash ./scripts/check-codex-rules.sh
+
 sync-pi: ## Sync skills, prompts, agents, and MCP extension to Pi config directory
 	@./sync-pi.sh
 
@@ -218,7 +224,7 @@ sync-mcp: ## Sync MCP servers from mcp.json to opencode.jsonc
 check-mcp-sync: ## Validate opencode.jsonc MCP block is up-to-date with mcp.json
 	@./sync-mcp.sh --check
 
-check: check-frontmatter check-agents check-refs check-agent-refs check-descriptions check-structure check-versions check-opencode-sync check-codex-sync check-pi-sync check-mcp-sync ## Run all validation checks (frontmatter, agents, refs, structure, plugins)
+check: check-frontmatter check-agents check-refs check-agent-refs check-descriptions check-structure check-versions check-opencode-sync check-codex-sync check-codex-config check-codex-rules check-pi-sync check-mcp-sync ## Run all validation checks (frontmatter, agents, refs, structure, plugins)
 	@echo "Checking plugin references..."
 	@ok=true; \
 	for source in $$(python3 -c "import json; data=json.load(open('.claude-plugin/marketplace.json')); print('\n'.join(p['source'] for p in data['plugins']))"); do \

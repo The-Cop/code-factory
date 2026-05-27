@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 #
-# install-codex-mcp.sh -- Install Codex MCP server config from mcp.json.
+# install-codex-mcp.sh -- Install Codex config from code-factory sources.
 #
 # mcp.json is the single source of truth for MCP server definitions.
+# codex/config.toml is the source of truth for managed Codex permissions.
 # This script updates $CODEX_HOME/config.toml, preserving unrelated Codex
 # settings and unrelated MCP servers.
 
@@ -10,12 +11,13 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 MCP_JSON="${MCP_JSON:-$SCRIPT_DIR/mcp.json}"
+CODEX_SETTINGS="${CODEX_SETTINGS:-$SCRIPT_DIR/codex/config.toml}"
 CODEX_HOME="${CODEX_HOME:-$HOME/.codex}"
 CODEX_CONFIG="${CODEX_CONFIG:-$CODEX_HOME/config.toml}"
 
 mkdir -p "$CODEX_HOME"
 
-python3 - "$MCP_JSON" "$CODEX_CONFIG" <<'PYEOF'
+python3 - "$MCP_JSON" "$CODEX_SETTINGS" "$CODEX_CONFIG" <<'PYEOF'
 import json
 import re
 import sys
@@ -23,10 +25,13 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 MCP_JSON = Path(sys.argv[1])
-CODEX_CONFIG = Path(sys.argv[2])
+CODEX_SETTINGS = Path(sys.argv[2])
+CODEX_CONFIG = Path(sys.argv[3])
 
 START = "# --- MCP Servers (managed by code-factory from mcp.json) ---"
 END = "# --- End MCP Servers ---"
+SETTINGS_START = "# --- Codex Settings (managed by code-factory from codex/config.toml) ---"
+SETTINGS_END = "# --- End Codex Settings ---"
 
 
 def toml_key(value):
@@ -49,7 +54,7 @@ def table_path(*parts):
     return ".".join(toml_key(part) for part in parts)
 
 
-def generated_section_prefixes(names):
+def generated_mcp_section_prefixes(names):
     prefixes = set()
     for name in names:
         prefixes.add(table_path("mcp_servers", name))
@@ -66,14 +71,17 @@ def is_managed_section(line, prefixes):
     return any(section == prefix or section.startswith(prefix + ".") for prefix in prefixes)
 
 
-def strip_managed_sections(content, names, root_keys):
-    marker_re = re.compile(
-        r"\n?" + re.escape(START) + r"\n.*?\n" + re.escape(END) + r"\n?",
-        re.DOTALL,
-    )
-    content = marker_re.sub("\n", content)
+def strip_marker_block(content, start, end):
+    marker_re = re.compile(r"\n?" + re.escape(start) + r"\n.*?\n" + re.escape(end) + r"\n?", re.DOTALL)
+    return marker_re.sub("\n", content)
 
-    prefixes = generated_section_prefixes(names)
+
+def strip_managed_sections(content, mcp_names, root_keys, table_prefixes):
+    content = strip_marker_block(content, START, END)
+    content = strip_marker_block(content, SETTINGS_START, SETTINGS_END)
+
+    prefixes = generated_mcp_section_prefixes(mcp_names)
+    prefixes.update(table_prefixes)
     kept = []
     skipping = False
     in_table = False
@@ -90,6 +98,37 @@ def strip_managed_sections(content, names, root_keys):
         kept.append(line)
 
     return "\n".join(kept).rstrip()
+
+
+def insert_root_settings(content, root_lines):
+    if not root_lines:
+        return content
+
+    lines = content.splitlines()
+    table_index = next(
+        (index for index, line in enumerate(lines) if re.match(r"\s*\[[^\]]+\]\s*$", line)),
+        len(lines),
+    )
+    prefix = "\n".join(lines[:table_index]).rstrip()
+    suffix = "\n".join(lines[table_index:]).lstrip()
+    settings = "\n".join(root_lines)
+
+    return "\n\n".join(part for part in (prefix, settings, suffix) if part).rstrip()
+
+
+def insert_block_before_first_table(content, block):
+    if not block:
+        return content
+
+    lines = content.splitlines()
+    table_index = next(
+        (index for index, line in enumerate(lines) if re.match(r"\s*\[[^\]]+\]\s*$", line)),
+        len(lines),
+    )
+    prefix = "\n".join(lines[:table_index]).rstrip()
+    suffix = "\n".join(lines[table_index:]).lstrip()
+
+    return "\n\n".join(part for part in (prefix, block.rstrip(), suffix) if part).rstrip()
 
 
 def oauth_value(oauth, *names):
@@ -143,14 +182,6 @@ def codex_oauth_callback_config(servers):
 
 def generate_block(servers):
     lines = [START]
-    callback_port, callback_url = codex_oauth_callback_config(servers)
-    if callback_port is not None:
-        lines.append(f"mcp_oauth_callback_port = {toml_value(callback_port)}")
-    if callback_url:
-        lines.append(f"mcp_oauth_callback_url = {toml_value(callback_url)}")
-    if callback_port is not None or callback_url:
-        lines.append("")
-
     for index, (name, cfg) in enumerate(servers.items()):
         if index:
             lines.append("")
@@ -198,6 +229,26 @@ def generate_block(servers):
     return "\n".join(lines) + "\n"
 
 
+def generate_root_settings(callback_port, callback_url):
+    lines = []
+    if callback_port is not None:
+        lines.append(f"mcp_oauth_callback_port = {toml_value(callback_port)}")
+    if callback_url:
+        lines.append(f"mcp_oauth_callback_url = {toml_value(callback_url)}")
+    return lines
+
+
+def generate_codex_settings_block(path):
+    if not path.exists():
+        raise FileNotFoundError(f"{path} does not exist")
+
+    content = path.read_text().strip()
+    if not content:
+        return ""
+
+    return "\n".join([SETTINGS_START, content, SETTINGS_END]) + "\n"
+
+
 data = json.loads(MCP_JSON.read_text())
 servers = data.get("mcpServers", {})
 if not isinstance(servers, dict):
@@ -210,12 +261,16 @@ if callback_port is not None:
     managed_root_keys.append("mcp_oauth_callback_port")
 if callback_url:
     managed_root_keys.append("mcp_oauth_callback_url")
-base = strip_managed_sections(existing, set(servers), managed_root_keys)
+managed_root_keys.extend(["approval_policy", "sandbox_mode"])
+managed_table_prefixes = {"sandbox_workspace_write"}
+base = strip_managed_sections(existing, set(servers), managed_root_keys, managed_table_prefixes)
+base = insert_root_settings(base, generate_root_settings(callback_port, callback_url))
+base = insert_block_before_first_table(base, generate_codex_settings_block(CODEX_SETTINGS))
 block = generate_block(servers)
 new_content = f"{base}\n\n{block}" if base else block
 
 CODEX_CONFIG.parent.mkdir(parents=True, exist_ok=True)
 CODEX_CONFIG.write_text(new_content)
 
-print(f"Installed {len(servers)} MCP servers into {CODEX_CONFIG}")
+print(f"Installed Codex settings and {len(servers)} MCP servers into {CODEX_CONFIG}")
 PYEOF
