@@ -19,7 +19,7 @@ The output shows the operation type (merge, rebase, revert, cherry-pick), confli
 
 **If Operation is "none" and no conflicted files:** inform the user there are no conflicts to resolve and stop.
 
-**If `$ARGUMENTS` specifies a file:** limit resolution scope to that file only (verify it appears in the conflicted list).
+**If the user's invocation prompt specifies a file:** limit resolution scope to that file only (verify it appears in the conflicted list).
 
 ## Step 2: Read Conflicted Files
 
@@ -157,16 +157,12 @@ git show <deletion-commit-sha>
 
 4. If still uncertain, ask the user:
 
-<interaction>
-AskUserQuestion(
-  header: "Keep or delete?",
-  question: "<file> was modified on one side but deleted on the other. The modification: <brief description>. The deletion was in commit <sha>: <message>. The deletion appears <intentional|incidental>. Keep the modified version or delete?",
-  options: [
-    "Keep modified" -- Stage the modified version with git add,
-    "Delete" -- Stage deletion with git rm
-  ]
-)
-</interaction>
+**Pause and ask the user. Wait for their answer before proceeding.**
+
+> **Keep or delete?** -- <file> was modified on one side but deleted on the other. The modification: <brief description>. The deletion was in commit <sha>: <message>. The deletion appears <intentional|incidental>. Keep the modified version or delete?
+>
+> - **Keep modified** -- Stage the modified version with git add
+> - **Delete** -- Stage deletion with git rm
 
 ### Add conflicts (AU — added by us, UA — added by them)
 
@@ -181,33 +177,25 @@ AskUserQuestion(
 
 For **merge** conflicts:
 
-<interaction>
-AskUserQuestion(
-  header: "Conflict choice",
-  question: "Conflict in <file>: <brief description of both sides>. How should this be resolved?",
-  options: [
-    "Keep local (ours)" -- Use the local/HEAD version,
-    "Keep remote (theirs)" -- Use the incoming version,
-    "Merge both" -- Combine changes from both sides,
-    "Leave unresolved" -- Skip this file for manual resolution
-  ]
-)
-</interaction>
+**Pause and ask the user. Wait for their answer before proceeding.**
+
+> **Conflict choice** -- Conflict in <file>: <brief description of both sides>. How should this be resolved?
+>
+> - **Keep local (ours)** -- Use the local/HEAD version
+> - **Keep remote (theirs)** -- Use the incoming version
+> - **Merge both** -- Combine changes from both sides
+> - **Leave unresolved** -- Skip this file for manual resolution
 
 For **rebase** conflicts (ours = upstream, theirs = your feature branch):
 
-<interaction>
-AskUserQuestion(
-  header: "Conflict choice (rebase)",
-  question: "Conflict in <file> while replaying your commit '<commit message>'. Upstream (HEAD) has: <ours summary>. Your branch has: <theirs summary>. How should this be resolved?",
-  options: [
-    "Keep your branch change (theirs)" -- Preserve your feature branch work,
-    "Keep upstream (ours)" -- Discard your branch's version for this section,
-    "Merge both" -- Combine both sides,
-    "Leave unresolved" -- Skip this file for manual resolution
-  ]
-)
-</interaction>
+**Pause and ask the user. Wait for their answer before proceeding.**
+
+> **Conflict choice (rebase)** -- Conflict in <file> while replaying your commit '<commit message>'. Upstream (HEAD) has: <ours summary>. Your branch has: <theirs summary>. How should this be resolved?
+>
+> - **Keep your branch change (theirs)** -- Preserve your feature branch work
+> - **Keep upstream (ours)** -- Discard your branch's version for this section
+> - **Merge both** -- Combine both sides
+> - **Leave unresolved** -- Skip this file for manual resolution
 
 ### Version and changelog conflicts
 

@@ -17,7 +17,7 @@ Announce: "I'm using the pr-fix skill to address PR review feedback."
 
 ## Step 1: Gather Context
 
-Parse `$ARGUMENTS` for:
+Parse the user's invocation prompt for:
 
 | Input | Pattern | Example |
 |-------|---------|---------|
@@ -182,30 +182,22 @@ Proposed actions:
 
 **For disagreements**, present each one explicitly:
 
-<interaction>
-AskUserQuestion(
-  header: "Review disagreement",
-  question: "Thread on {path}:{line} — Reviewer says: '{summary}'. How should we handle this?",
-  options: [
-    "Fix as requested" — Make the change the reviewer wants,
-    "Explain and keep" — Respond with explanation, do not change code,
-    "Discuss further" — Reply asking for more context, do not resolve
-  ]
-)
-</interaction>
+**Pause and ask the user. Wait for their answer before proceeding.**
+
+> **Review disagreement** -- Thread on {path}:{line} — Reviewer says: '{summary}'. How should we handle this?
+>
+> - **Fix as requested** -- Make the change the reviewer wants
+> - **Explain and keep** -- Respond with explanation, do not change code
+> - **Discuss further** -- Reply asking for more context, do not resolve
 
 **For everything else**, ask:
 
-<interaction>
-AskUserQuestion(
-  header: "Proceed?",
-  question: "Ready to address {count} threads ({suggestions} suggestions, {changes} code changes, {questions} explanations)?",
-  options: [
-    "Fix all" — Address all threads as categorized,
-    "Let me choose" — Review each thread individually before proceeding
-  ]
-)
-</interaction>
+**Pause and ask the user. Wait for their answer before proceeding.**
+
+> **Proceed?** -- Ready to address {count} threads ({suggestions} suggestions, {changes} code changes, {questions} explanations)?
+>
+> - **Fix all** -- Address all threads as categorized
+> - **Let me choose** -- Review each thread individually before proceeding
 
 If "Let me choose": present each thread with its category and proposed action. Let the user override categories or skip specific threads.
 
@@ -385,17 +377,13 @@ Compare timestamps. If the latest commit is **after** the latest bot comment (or
 8c will poll for comments and apply fixes — max 3 iterations).
 **Interactive mode:**
 
-<interaction>
-AskUserQuestion(
-  header: "Re-trigger automated reviews?",
-  question: "There are new commits since the last Codex reviews. Re-trigger them?",
-  options: [
-    "Yes — review and fix" — Trigger reviewers, fix actionable feedback after CI (max 3 iterations),
-    "Just trigger" — Post review comments but do not auto-fix,
-    "No" — Skip automated reviews
-  ]
-)
-</interaction>
+**Pause and ask the user. Wait for their answer before proceeding.**
+
+> **Re-trigger automated reviews?** -- There are new commits since the last Codex reviews. Re-trigger them?
+>
+> - **Yes — review and fix** -- Trigger reviewers, fix actionable feedback after CI (max 3 iterations)
+> - **Just trigger** -- Post review comments but do not auto-fix
+> - **No** -- Skip automated reviews
 
 If triggering: post `@codex` per [references/automated-review-loop.md](references/automated-review-loop.md) Phase 1. Do NOT wait — 8c will poll later. **Proceed to 8b.**
 
@@ -407,17 +395,13 @@ If triggering: post `@codex` per [references/automated-review-loop.md](reference
 
 **Interactive mode:**
 
-<interaction>
-AskUserQuestion(
-  header: "Watch CI?",
-  question: "Want me to watch CI and auto-fix any failures?",
-  options: [
-    "Yes — watch and fix" — Monitor CI, analyze failures, apply fixes, and loop until green (max 3 iterations),
-    "Just watch" — Monitor CI and report results without auto-fixing,
-    "No" — Skip CI monitoring
-  ]
-)
-</interaction>
+**Pause and ask the user. Wait for their answer before proceeding.**
+
+> **Watch CI?** -- Want me to watch CI and auto-fix any failures?
+>
+> - **Yes — watch and fix** -- Monitor CI, analyze failures, apply fixes, and loop until green (max 3 iterations)
+> - **Just watch** -- Monitor CI and report results without auto-fixing
+> - **No** -- Skip CI monitoring
 
 **If "No":** skip to 8c. Otherwise, start the CI poller in the background:
 

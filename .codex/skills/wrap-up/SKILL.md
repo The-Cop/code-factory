@@ -13,7 +13,7 @@ Auto-apply without asking; present a consolidated report at the end.
 
 ## Step 1: Ship It
 
-Skip this phase if `$ARGUMENTS` contains `--skip-ship`.
+Skip this phase if the user's invocation prompt contains `--skip-ship`.
 
 ### 1a: Commit Changes
 
@@ -76,7 +76,7 @@ Capture the `/reflect` summary output for inclusion in the Phase 3 report.
 
 ## Step 3: Publish It
 
-Skip this phase if `$ARGUMENTS` contains `--skip-publish`.
+Skip this phase if the user's invocation prompt contains `--skip-publish`.
 
 Review the full conversation for material that could be published.
 

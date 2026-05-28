@@ -11,7 +11,7 @@ Walk through code to explain architecture, flows, or structure. Two modes: **int
 
 ## Arguments
 
-`$ARGUMENTS` - The topic, service, or code area to tour (e.g., "apm-services-api", "authentication flow", "src/handlers")
+the user's invocation prompt - The topic, service, or code area to tour (e.g., "apm-services-api", "authentication flow", "src/handlers")
 
 ## Mode Selection
 
@@ -20,27 +20,20 @@ Pick mode based on user intent:
 - **Interactive** (default): User said "tour", "walk me through", "show me". Step-by-step with pauses.
 - **Written**: User said "write a tour", "document the architecture", "write up how X works", or added `--written`. Produces a complete markdown document.
 
-If unclear, pick via `AskUserQuestion`:
+If unclear, pick via `an interactive prompt`:
 
-```
-AskUserQuestion(
-  questions: [{
-    header: "Tour mode",
-    question: "How would you like the tour delivered?",
-    options: [
-      {label: "Interactive (Recommended)", description: "Step-by-step, one stop per message"},
-      {label: "Written document", description: "Full markdown document I can read offline"}
-    ],
-    multiSelect: false
-  }]
-)
-```
+**Pause and ask the user. Wait for their answer before proceeding.**
+
+> **Tour mode** -- How would you like the tour delivered?
+>
+> - **Interactive (Recommended)** -- Step-by-step, one stop per message
+> - **Written document** -- Full markdown document I can read offline
 
 ## Step 1: Discover Code Context
 
 **Tool preferences**: Use Glob to find files and Grep to search content. Never use `find` or Bash for file discovery. For broad exploration across multiple directories, delegate to a subagent via `Task(subagent=Explore)`.
 
-1. Use Glob/Grep to locate relevant source files for `$ARGUMENTS`
+1. Use Glob/Grep to locate relevant source files for the user's invocation prompt
 2. If Atlassian MCP tools are available, query for internal documentation and Confluence pages
 3. Search the current repo and common code directories for relevant source files
 4. **Pre-read ALL discovered files** using the Read tool before building the tour plan — full contextual awareness prevents backtracking during delivery

@@ -37,16 +37,12 @@ If a path points to a managed directory, resolve it to the repo-relative equival
 Do not silently write there.
 Instead, explain why and ask the user:
 
-```
-AskUserQuestion(
-  header: "Write to managed directory?",
-  question: "I need to write to <path>, which is a managed directory (overwritten on sync). Reason: <why>. Proceed?",
-  options: [
-    "Yes — write there" -- I understand this may be overwritten,
-    "No — write to repo source instead" -- Resolve to the repo-relative path
-  ]
-)
-```
+**Pause and ask the user. Wait for their answer before proceeding.**
+
+> **Write to managed directory?** -- I need to write to <path>, which is a managed directory (overwritten on sync). Reason: <why>. Proceed?
+>
+> - **Yes — write there** -- I understand this may be overwritten
+> - **No — write to repo source instead** -- Resolve to the repo-relative path
 
 ### Red flags — STOP if you think any of these
 
@@ -84,7 +80,7 @@ REPO_ROOT=$(git rev-parse --show-toplevel)
 
 Set `REPO_ROOT` for all subsequent file operations. The skill workbench works in any repository — it adapts to the skill/agent/plugin structure found.
 
-Parse `$ARGUMENTS` to determine the operation mode:
+Parse the user's invocation prompt to determine the operation mode:
 
 ```dot
 digraph route {
@@ -129,7 +125,7 @@ Determine from arguments and conversation:
 
 | Requirement | How to resolve |
 |-------------|---------------|
-| **Skill name** | From `$ARGUMENTS` after "create". Must be kebab-case, max 64 chars. |
+| **Skill name** | From the user's invocation prompt after "create". Must be kebab-case, max 64 chars. |
 | **Owning plugin** | Ask user if ambiguous: `productivity`, `git`, or `code`. |
 | **Purpose** | What problem does this skill solve? What triggers should invoke it? |
 | **Skill type** | Discipline-enforcing, workflow automation, reference, or pattern? |
@@ -278,7 +274,7 @@ Route to Step 5 (Report).
 
 ### 3a: Determine Scope
 
-From `$ARGUMENTS`, identify the target:
+From the user's invocation prompt, identify the target:
 
 | Argument | Scope |
 |----------|-------|

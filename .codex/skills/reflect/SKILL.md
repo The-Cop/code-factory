@@ -22,7 +22,7 @@ medium-confidence ones are queued for human review.
 
 ## Step 1: Determine Mode
 
-Parse `$ARGUMENTS` to select mode:
+Parse the user's invocation prompt to select mode:
 
 | Arguments | Mode |
 |-----------|------|
@@ -166,20 +166,16 @@ Read `$PENDING_FILE`. If it doesn't exist or is empty:
 
 ### 2B.2: Present for Review
 
-For each pending learning, present it to the user with `AskUserQuestion`:
+For each pending learning, present it to the user with `an interactive prompt`:
 
-```
-AskUserQuestion(
-  header: "Learning",
-  question: "[learning text]\nConfidence: [score] | Target: [file] | Evidence: [evidence]",
-  options: [
-    "Apply" — Add this learning to the target file,
-    "Edit" — Modify before applying,
-    "Skip" — Keep in queue for later,
-    "Reject" — Remove from queue permanently
-  ]
-)
-```
+**Pause and ask the user. Wait for their answer before proceeding.**
+
+> **Learning** -- [learning text]\nConfidence: [score] | Target: [file] | Evidence: [evidence]
+>
+> - **Apply** -- Add this learning to the target file
+> - **Edit** -- Modify before applying
+> - **Skip** -- Keep in queue for later
+> - **Reject** -- Remove from queue permanently
 
 ### 2B.3: Process Decisions
 

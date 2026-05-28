@@ -21,7 +21,7 @@ Gains are largest on aggregate and multi-step tasks.
 
 ## Step 1: Discover the CLI
 
-Parse `$ARGUMENTS` to identify the target CLI and mode.
+Parse the user's invocation prompt to identify the target CLI and mode.
 
 | Argument | Mode |
 |----------|------|

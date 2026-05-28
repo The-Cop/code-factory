@@ -38,7 +38,7 @@ TODAY=$(date +%Y-%m-%d)
 YEAR=$(date +%Y)
 ```
 
-Parse `$ARGUMENTS` for:
+Parse the user's invocation prompt for:
 
 | Component | How to resolve |
 |-----------|---------------|
@@ -72,8 +72,8 @@ Use the same 4-level name resolution as `/notes` and `/daily`:
 | 3 | **Accent-insensitive match** — strip accents before comparing | "Alvaro" → `Álvaro Mongil/` |
 | 4 | **Substring match** — input is a clear substring of exactly one name | "Mongil" → `Álvaro Mongil/` |
 
-- **Multiple matches**: use AskUserQuestion to present candidates.
-- **No match**: ask for the full name using AskUserQuestion. Do not bootstrap a new People entry — the person must already exist in the vault to have meaningful feedback data.
+- **Multiple matches**: use an interactive prompt to present candidates.
+- **No match**: ask for the full name using an interactive prompt. Do not bootstrap a new People entry — the person must already exist in the vault to have meaningful feedback data.
 
 After resolving, read the person's overview file (`People/<Person>/<Person>.md`)
 to get their attributes (role, team, github username) for external queries.
@@ -171,19 +171,15 @@ atlassian_searchConfluenceUsingCql(
 
 After automated collection, ask the user for context that can't be discovered:
 
-```
-AskUserQuestion(
-  header: "Additional context for <Person>'s review",
-  question: "I've gathered evidence from your notes, GitHub, Jira, and Confluence.
+**Pause and ask the user. Wait for their answer before proceeding.**
+
+> **Additional context for <Person>'s review** -- I've gathered evidence from your notes, GitHub, Jira, and Confluence.
 Before I synthesize, is there anything I should know that isn't in these sources?
 For example: informal feedback from others, cross-team impact, leadership moments,
-areas for growth, or specific incidents worth highlighting.",
-  options: [
-    "Yes, I have additional context" -- Let me add more details,
-    "No, proceed with what you have" -- Synthesize from collected evidence
-  ]
-)
-```
+areas for growth, or specific incidents worth highlighting.
+>
+> - **Yes, I have additional context** -- Let me add more details
+> - **No, proceed with what you have** -- Synthesize from collected evidence
 
 If the user provides additional context, incorporate it into the synthesis.
 
@@ -299,4 +295,4 @@ tags: [performance-feedback, period-label-slug, fullname-slug]
 | Career plan file doesn't exist | Skip Growth & Development career plan comparison, note the gap |
 | Achievements file doesn't exist | Skip, note the gap |
 | Review period is in the future | Warn user and adjust to today as end date |
-| Feedback file already exists for this period | Read it, then use `AskUserQuestion` with options "Overwrite" / "Append" / "Cancel" so the user picks without typing |
+| Feedback file already exists for this period | Read it, then use `an interactive prompt` with options "Overwrite" / "Append" / "Cancel" so the user picks without typing |

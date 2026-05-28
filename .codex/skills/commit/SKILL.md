@@ -28,16 +28,12 @@ Run in parallel:
 
 **If there are unstaged changes but nothing staged:**
 
-<interaction>
-AskUserQuestion(
-  header: "Stage files",
-  question: "No files are staged. What would you like to commit?",
-  options: [
-    "All changes" -- Stage all modified and untracked files,
-    "Let me choose" -- Show file list for selective staging
-  ]
-)
-</interaction>
+**Pause and ask the user. Wait for their answer before proceeding.**
+
+> **Stage files** -- No files are staged. What would you like to commit?
+>
+> - **All changes** -- Stage all modified and untracked files
+> - **Let me choose** -- Show file list for selective staging
 
 - "All changes": run `git add -A`
 - "Let me choose": list the changed files and let the user specify which to stage
@@ -76,16 +72,12 @@ Compute **direct file overlap** between the change set (staged files if any, oth
 
 **If a fixup candidate is found:**
 
-<interaction>
-AskUserQuestion(
-  header: "Fixup?",
-  question: "These changes overlap with commit <sha> (<message>). Create a fixup commit instead?",
-  options: [
-    "Yes, fixup" -- Create a fixup commit targeting that commit via /fixup,
-    "No, new commit" -- Proceed with a regular new commit
-  ]
-)
-</interaction>
+**Pause and ask the user. Wait for their answer before proceeding.**
+
+> **Fixup?** -- These changes overlap with commit <sha> (<message>). Create a fixup commit instead?
+>
+> - **Yes, fixup** -- Create a fixup commit targeting that commit via /fixup
+> - **No, new commit** -- Proceed with a regular new commit
 
 - "Yes, fixup": invoke `/fixup <sha>` and stop
 - "No, new commit": continue to Step 3
@@ -99,16 +91,12 @@ Before analyzing, verify the staged set is complete:
 
 **If related test or doc files are unstaged**, ask the user:
 
-<interaction>
-AskUserQuestion(
-  header: "Include tests?",
-  question: "Found unstaged files related to your staged changes: <list files>. Include them in this commit?",
-  options: [
-    "Yes, include" -- Stage the related files too,
-    "No, skip" -- Commit without them
-  ]
-)
-</interaction>
+**Pause and ask the user. Wait for their answer before proceeding.**
+
+> **Include tests?** -- Found unstaged files related to your staged changes: <list files>. Include them in this commit?
+>
+> - **Yes, include** -- Stage the related files too
+> - **No, skip** -- Commit without them
 
 - "Yes, include": stage the listed files
 - "No, skip": proceed without them
@@ -120,22 +108,18 @@ Read the staged diff (`git diff --staged`) to understand what changed.
 **Detect commit style:** Check the `git log --oneline -5` output from Step 1. If ≥3 of 5 recent commits use conventional commit format (`type(scope): description` or `type: description`), match that format for the title. Otherwise, use a free-form title.
 
 Determine:
-- **Title**: a concise one-line summary of the changes. Use `$ARGUMENTS` as the title if provided. If the repo uses conventional commits, prefix with the appropriate type (`feat`, `fix`, `refactor`, `docs`, `test`, `chore`, `style`, `perf`) and optional scope. Otherwise, derive a free-form title from the diff.
-- **Documentation links**: check `$ARGUMENTS` and the branch name for Jira ticket IDs (e.g., `JIRA-1234`, `XX-123`). Check for any RFC or doc URLs mentioned in `$ARGUMENTS`.
-- **Motivation**: the "why" behind the changes. Infer from `$ARGUMENTS`, branch name, conversation context, or the diff itself. **If motivation cannot be inferred from any of these sources**, ask the user:
+- **Title**: a concise one-line summary of the changes. Use the user's invocation prompt as the title if provided. If the repo uses conventional commits, prefix with the appropriate type (`feat`, `fix`, `refactor`, `docs`, `test`, `chore`, `style`, `perf`) and optional scope. Otherwise, derive a free-form title from the diff.
+- **Documentation links**: check the user's invocation prompt and the branch name for Jira ticket IDs (e.g., `JIRA-1234`, `XX-123`). Check for any RFC or doc URLs mentioned in the user's invocation prompt.
+- **Motivation**: the "why" behind the changes. Infer from the user's invocation prompt, branch name, conversation context, or the diff itself. **If motivation cannot be inferred from any of these sources**, ask the user:
 
-<interaction>
-AskUserQuestion(
-  header: "Motivation",
-  question: "What motivated this change? (for the commit message)",
-  options: [
-    "Bug fix" -- Fixing incorrect behavior,
-    "New feature" -- Adding new functionality,
-    "Refactor" -- Improving code structure without changing behavior,
-    "Chore" -- Maintenance, dependency updates, or configuration
-  ]
-)
-</interaction>
+**Pause and ask the user. Wait for their answer before proceeding.**
+
+> **Motivation** -- What motivated this change? (for the commit message)
+>
+> - **Bug fix** -- Fixing incorrect behavior
+> - **New feature** -- Adding new functionality
+> - **Refactor** -- Improving code structure without changing behavior
+> - **Chore** -- Maintenance, dependency updates, or configuration
 
 Use the user's response (including any free-text "Other" input) to write the Motivation section.
 

@@ -9,7 +9,7 @@ Announce: "I'm using the doc skill to manage Markdown documentation."
 
 ## Step 1: Parse Arguments
 
-Parse `$ARGUMENTS` to determine intent and options:
+Parse the user's invocation prompt to determine intent and options:
 
 ```
 /doc <intent> [options]
@@ -47,7 +47,7 @@ Parse `$ARGUMENTS` to determine intent and options:
 
 - If no `--path`, use current directory for audit/maintain/sync, or prompt for create/update/improve
 - If no `--format` for create, prompt user to select
-- If intent is ambiguous, use AskUserQuestion to clarify
+- If intent is ambiguous, use an interactive prompt to clarify
 
 ## Writing Style: Semantic Line Feeds
 
@@ -75,29 +75,21 @@ Create a new document from a template.
 
 1. **Determine format** - If `--format` not provided:
 
-```
-AskUserQuestion(
-  header: "Doc format",
-  question: "What type of document are you creating?",
-  options: [
-    "runbook" -- Step-by-step operational procedures for incidents or tasks,
-    "guide" -- How-to guide explaining a process or workflow,
-    "reference" -- API or technical reference documentation,
-    "tutorial" -- Learning-oriented walkthrough for beginners,
-    "adr" -- Architecture Decision Record for significant decisions
-  ]
-)
-```
+**Pause and ask the user. Wait for their answer before proceeding.**
+
+> **Doc format** -- What type of document are you creating?
+>
+> - **runbook** -- Step-by-step operational procedures for incidents or tasks
+> - **guide** -- How-to guide explaining a process or workflow
+> - **reference** -- API or technical reference documentation
+> - **tutorial** -- Learning-oriented walkthrough for beginners
+> - **adr** -- Architecture Decision Record for significant decisions
 
 2. **Determine location** - If `--path` not provided:
 
-```
-AskUserQuestion(
-  header: "Doc location",
-  question: "Where should I create this document?",
-  options: [] // free-text response expected
-)
-```
+**Pause and ask the user. Wait for their answer before proceeding.**
+
+> **Doc location** -- Where should I create this document?
 
 3. **Load template** - Read the appropriate template from this skill's templates directory.
 
@@ -127,20 +119,16 @@ Apply specific edits to an existing document.
 
 1. **Read document** - Load the existing document content.
 
-2. **Identify changes** - Parse `$ARGUMENTS` for the requested change. If unclear:
+2. **Identify changes** - Parse the user's invocation prompt for the requested change. If unclear:
 
-```
-AskUserQuestion(
-  header: "Update type",
-  question: "What would you like to update in this document?",
-  options: [
-    "Add section" -- Add a new section to the document,
-    "Update section" -- Modify an existing section,
-    "Add reference" -- Add links or references,
-    "Fix content" -- Correct specific content
-  ]
-)
-```
+**Pause and ask the user. Wait for their answer before proceeding.**
+
+> **Update type** -- What would you like to update in this document?
+>
+> - **Add section** -- Add a new section to the document
+> - **Update section** -- Modify an existing section
+> - **Add reference** -- Add links or references
+> - **Fix content** -- Correct specific content
 
 3. **Apply changes** - Make the requested edits while preserving:
    - Document structure and frontmatter
@@ -264,17 +252,13 @@ Keep documentation fresh: fix broken links, update references, ensure consistent
 
 4. **Offer fixes** - For each fixable issue, offer to apply the fix.
 
-```
-AskUserQuestion(
-  header: "Apply fixes",
-  question: "Found 5 auto-fixable issues. Apply fixes?",
-  options: [
-    "Fix all" -- Apply all automatic fixes,
-    "Review each" -- Show each fix for approval,
-    "Skip" -- Generate report only
-  ]
-)
-```
+**Pause and ask the user. Wait for their answer before proceeding.**
+
+> **Apply fixes** -- Found 5 auto-fixable issues. Apply fixes?
+>
+> - **Fix all** -- Apply all automatic fixes
+> - **Review each** -- Show each fix for approval
+> - **Skip** -- Generate report only
 
 ---
 
@@ -387,18 +371,14 @@ ddoc status --root <path>
 
 4. **Show status and confirm:**
 
-```
-AskUserQuestion(
-  header: "Confirm sync",
-  question: "Ready to sync <N> documents to Confluence. Proceed?",
-  options: [
-    "Sync all" -- Sync all modified documents,
-    "Select" -- Open interactive selection (ddoc sync),
-    "Dry run" -- Preview without syncing,
-    "Cancel" -- Do not sync
-  ]
-)
-```
+**Pause and ask the user. Wait for their answer before proceeding.**
+
+> **Confirm sync** -- Ready to sync <N> documents to Confluence. Proceed?
+>
+> - **Sync all** -- Sync all modified documents
+> - **Select** -- Open interactive selection (ddoc sync)
+> - **Dry run** -- Preview without syncing
+> - **Cancel** -- Do not sync
 
 5. **Execute sync:**
 

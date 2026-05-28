@@ -58,20 +58,16 @@ Determine the **change set** — the files to match against branch commits:
 
 ## Step 3: Match Changes to a Commit
 
-**If `$ARGUMENTS` contains a commit hash or unambiguous description:** resolve it to a SHA and skip to Step 4. Verify the SHA is within the branch range (`<merge-base>..HEAD`).
+**If the user's invocation prompt contains a commit hash or unambiguous description:** resolve it to a SHA and skip to Step 4. Verify the SHA is within the branch range (`<merge-base>..HEAD`).
 
 **Single-commit fast path:** If there is exactly one commit on the branch, it is the target. Confirm with the user and skip to Step 4:
 
-<interaction>
-AskUserQuestion(
-  header: "Target commit",
-  question: "Only one commit on this branch: <sha> (<message>). Fixup into it?",
-  options: [
-    "Yes" -- Create fixup targeting that commit,
-    "No, new commit" -- Create a regular commit instead via /commit
-  ]
-)
-</interaction>
+**Pause and ask the user. Wait for their answer before proceeding.**
+
+> **Target commit** -- Only one commit on this branch: <sha> (<message>). Fixup into it?
+>
+> - **Yes** -- Create fixup targeting that commit
+> - **No, new commit** -- Create a regular commit instead via /commit
 
 For each branch commit, compute a **file overlap score**:
 
@@ -85,7 +81,7 @@ Rank commits by direct overlap first, then directory overlap as tiebreaker.
 | Situation | Action |
 |-----------|--------|
 | One commit has the highest direct overlap (> 0) | Use that commit |
-| Multiple commits tied on direct overlap | Use `AskUserQuestion` to pick — one option per tied commit (`<sha> <subject>`) plus a "Cancel" option |
+| Multiple commits tied on direct overlap | Use `an interactive prompt` to pick — one option per tied commit (`<sha> <subject>`) plus a "Cancel" option |
 | No commit has any direct overlap | Go to Step 3b |
 
 ### Step 3b: Semantic Matching (No File Overlap)
@@ -96,7 +92,7 @@ When no commit shares files with the change set, check for logical relationships
 2. Read each branch commit's message and diff summary (`git log -1 --stat <sha>`).
 3. Look for: new test files for code introduced in a commit, new files imported by files in a commit, documentation for a feature added in a commit.
 
-**If a logical match is found:** confirm via `AskUserQuestion` with options "Yes, fixup into `<sha>`" / "No, create a new commit instead" / "Pick a different commit".
+**If a logical match is found:** confirm via `an interactive prompt` with options "Yes, fixup into `<sha>`" / "No, create a new commit instead" / "Pick a different commit".
 
 **If no match is found:** inform the user:
 

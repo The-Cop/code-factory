@@ -106,6 +106,163 @@ rewrite_body() {
     # Handles both ${CLAUDE_PLUGIN_ROOT} and $CLAUDE_PLUGIN_ROOT forms
     sed "${sed_i[@]}" 's|\${CLAUDE_PLUGIN_ROOT}/skills/[^/]*/|./|g' "$file"
     sed "${sed_i[@]}" 's|\$CLAUDE_PLUGIN_ROOT/skills/[^/]*/|./|g' "$file"
+
+    # Rewrite Claude-only interaction patterns to plain-text instructions Codex
+    # can follow: <interaction>AskUserQuestion(...)</interaction> -> "Ask the
+    # user..." block; $ARGUMENTS (outside fenced code) -> "the user's
+    # invocation prompt".
+    rewrite_codex_prompts "$file"
+}
+
+# rewrite_codex_prompts: convert Claude-Code-only interaction syntax to plain
+# text Codex respects. Codex has no AskUserQuestion tool, so the original
+# blocks render as inert documentation and the model silently skips the prompt.
+#   $1 = file path
+rewrite_codex_prompts() {
+    local file="$1"
+    python3 - "$file" << 'PYEOF'
+import re, sys
+
+src = sys.argv[1]
+with open(src) as f:
+    text = f.read()
+
+# ---------------------------------------------------------------------------
+# Option parsing: tolerate both string-tuple and object-literal forms.
+#   "Label" -- Description, "Label" — Description, ...
+#   {label: "Label", description: "..."}, {...}
+# ---------------------------------------------------------------------------
+str_option_re = re.compile(
+    r'"(?P<label>[^"]+)"\s*(?:--|—|–)\s*(?P<desc>.+?)(?=\s*,\s*"|\s*,\s*\{|\Z)',
+    re.DOTALL,
+)
+obj_option_re = re.compile(
+    r'\{\s*label:\s*"(?P<label>[^"]+)"\s*,\s*description:\s*"(?P<desc>[^"]*)"\s*\}',
+    re.DOTALL,
+)
+
+def parse_options(options_text):
+    out = []
+    for m in obj_option_re.finditer(options_text):
+        out.append((m.group('label').strip(),
+                    re.sub(r'\s+', ' ', m.group('desc').strip())))
+    if out:
+        return out
+    for m in str_option_re.finditer(options_text):
+        out.append((m.group('label').strip(),
+                    re.sub(r'\s+', ' ',
+                           m.group('desc').strip().rstrip(',').strip())))
+    return out
+
+def render_block(header, question, options, multi=False):
+    suffix = ' (the user may pick multiple options)' if multi else ''
+    lines = [f'**Pause and ask the user. Wait for their answer before proceeding.{suffix}**', '']
+    if header and question:
+        lines.append(f'> **{header}** -- {question}')
+    elif question:
+        lines.append(f'> {question}')
+    elif header:
+        lines.append(f'> {header}')
+    if options:
+        lines.append('>')
+        for label, desc in options:
+            lines.append(f'> - **{label}** -- {desc}')
+    return '\n'.join(lines)
+
+def parse_call_body(body):
+    """Extract header, question, options, multiSelect from a single question dict
+       or the flat call body."""
+    # If body wraps a `questions: [{...}]` array, pull the first question.
+    nested = re.search(r'questions:\s*\[\s*\{(.*)\}\s*\]', body, re.DOTALL)
+    inner = nested.group(1) if nested else body
+
+    header = (re.search(r'header:\s*"([^"]*)"', inner) or [None, ''])[1]
+    h = re.search(r'header:\s*"([^"]*)"', inner)
+    q = re.search(r'question:\s*"([^"]*)"', inner)
+    o = re.search(r'options:\s*\[\s*(.*?)\s*\]', inner, re.DOTALL)
+    multi = bool(re.search(r'multiSelect:\s*true', inner))
+    header = h.group(1) if h else ''
+    question = q.group(1) if q else ''
+    options = parse_options(o.group(1)) if o else []
+    return header, question, options, multi
+
+# ---------------------------------------------------------------------------
+# 1) <interaction>AskUserQuestion(...)</interaction> -> ask block.
+# ---------------------------------------------------------------------------
+interaction_re = re.compile(
+    r'<interaction>\s*'
+    r'AskUserQuestion\(\s*'
+    r'(?P<body>.*?)'
+    r'\s*\)\s*'
+    r'</interaction>',
+    re.DOTALL,
+)
+def transform_interaction(m):
+    return render_block(*parse_call_body(m.group('body')))
+text = interaction_re.sub(transform_interaction, text)
+
+# ---------------------------------------------------------------------------
+# 2) Fenced AskUserQuestion blocks (``` ... AskUserQuestion(...) ... ```)
+#    Replace the entire fenced region with the plain-text ask block so the
+#    markdown reads cleanly.
+# ---------------------------------------------------------------------------
+fenced_re = re.compile(
+    r'```[^\n]*\n'
+    r'AskUserQuestion\(\s*'
+    r'(?P<body>.*?)'
+    r'\s*\)\s*\n'
+    r'```',
+    re.DOTALL,
+)
+def transform_fenced(m):
+    return render_block(*parse_call_body(m.group('body')))
+text = fenced_re.sub(transform_fenced, text)
+
+# ---------------------------------------------------------------------------
+# 3) Bare AskUserQuestion(...) blocks (no wrapper, no fence). Conservative
+#    match: the call must start at the beginning of a line.
+# ---------------------------------------------------------------------------
+bare_re = re.compile(
+    r'(?m)^AskUserQuestion\(\s*\n'
+    r'(?P<body>.*?)\n'
+    r'\s*\)\s*$',
+    re.DOTALL,
+)
+def transform_bare(m):
+    return render_block(*parse_call_body(m.group('body')))
+text = bare_re.sub(transform_bare, text)
+
+# ---------------------------------------------------------------------------
+# 4) Inline prose mention: `AskUserQuestion` -> `an interactive prompt`.
+#    Replace both backtick-wrapped and bare word occurrences. By this point
+#    every structural call site has been rewritten, so the only remaining
+#    matches are descriptive prose.
+# ---------------------------------------------------------------------------
+text = text.replace('`AskUserQuestion`', '`an interactive prompt`')
+text = re.sub(r'\bAskUserQuestion\b', 'an interactive prompt', text)
+
+# ---------------------------------------------------------------------------
+# 5) $ARGUMENTS -> "the user's invocation prompt", but only outside fenced
+#    code blocks (so shell heredocs like "$ARGUMENTS" stay intact). Codex has
+#    no Claude-style argument variable; invocation text reaches the skill as
+#    the user prompt.
+# ---------------------------------------------------------------------------
+out_lines = []
+in_fence = False
+for line in text.split('\n'):
+    if line.lstrip().startswith('```'):
+        in_fence = not in_fence
+        out_lines.append(line)
+        continue
+    if not in_fence:
+        line = line.replace('`$ARGUMENTS`', "the user's invocation prompt")
+        line = line.replace('$ARGUMENTS', "the user's invocation prompt")
+    out_lines.append(line)
+text = '\n'.join(out_lines)
+
+with open(src, 'w') as f:
+    f.write(text)
+PYEOF
 }
 
 # strip_codex_frontmatter: rewrite SKILL.md frontmatter to Codex format

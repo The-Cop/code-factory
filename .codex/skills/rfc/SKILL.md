@@ -70,33 +70,25 @@ Load [references/phase-flow.md](references/phase-flow.md) for detailed agent dis
 
 **This step runs IMMEDIATELY on invocation, before discovering runs or doing any other work.**
 
-Check `$ARGUMENTS` for the `--auto` flag. If present, strip it and pre-select autonomous mode.
+Check the user's invocation prompt for the `--auto` flag. If present, strip it and pre-select autonomous mode.
 
 ### 1a: RFC Type
 
-```
-AskUserQuestion(
-  header: "RFC type",
-  question: "What type of RFC are you writing?",
-  options: [
-    "Problem Statement (Recommended for new proposals)" -- Describes the problem, justification, stakeholders, and requirements. Typically 3-4 pages. First phase of the RFC process.,
-    "Design Document" -- Detailed technical design: architecture, APIs, data stores, deployment, testing, operations. Builds on an approved problem statement.
-  ]
-)
-```
+**Pause and ask the user. Wait for their answer before proceeding.**
+
+> **RFC type** -- What type of RFC are you writing?
+>
+> - **Problem Statement (Recommended for new proposals)** -- Describes the problem, justification, stakeholders, and requirements. Typically 3-4 pages. First phase of the RFC process.
+> - **Design Document** -- Detailed technical design: architecture, APIs, data stores, deployment, testing, operations. Builds on an approved problem statement.
 
 ### 1b: Interaction Mode
 
-```
-AskUserQuestion(
-  header: "Interaction mode",
-  question: "How should the RFC writing be managed?",
-  options: [
-    "Interactive (Recommended)" -- Review and approve outputs at each phase. Ask questions to clarify. Best for most RFCs.,
-    "Autonomous" -- Proceed through all phases, asking only on blockers. Reports at completion.
-  ]
-)
-```
+**Pause and ask the user. Wait for their answer before proceeding.**
+
+> **Interaction mode** -- How should the RFC writing be managed?
+>
+> - **Interactive (Recommended)** -- Review and approve outputs at each phase. Ask questions to clarify. Best for most RFCs.
+> - **Autonomous** -- Proceed through all phases, asking only on blockers. Reports at completion.
 
 **If `--auto` was in arguments:** Skip 1b and use autonomous mode.
 
@@ -119,20 +111,20 @@ For each discovered `RFC-STATE.md`, read it and check `current_phase`:
 
 **Classification rules (apply in order):**
 
-1. **State file reference**: `$ARGUMENTS` contains `RFC-STATE.md` or is a path to an existing state file:
+1. **State file reference**: the user's invocation prompt contains `RFC-STATE.md` or is a path to an existing state file:
    - If `current_phase` is not `DONE` → route to **Resume** (Step 5)
    - If `current_phase` is `DONE` → route to **Iterate** (Step 4b)
 
-2. **RFC output file reference**: `$ARGUMENTS` is a path to an existing `.md` file that is not a state file (e.g., `~/docs/rfcs/*.md`):
+2. **RFC output file reference**: the user's invocation prompt is a path to an existing `.md` file that is not a state file (e.g., `~/docs/rfcs/*.md`):
    - Read the file and verify it has RFC structure (title, sections)
    - Route to **Iterate** (Step 4b)
 
-3. **RFC topic, no active or completed runs**: `$ARGUMENTS` is an RFC topic:
+3. **RFC topic, no active or completed runs**: the user's invocation prompt is an RFC topic:
    - Route to **New RFC** (Step 4)
 
 4. **RFC topic, active or completed runs exist**:
    ```
-   AskUserQuestion(
+   an interactive prompt(
      header: "Existing RFCs found",
      question: "Found existing RFC runs. What would you like to do?",
      options: [
@@ -214,18 +206,14 @@ Look for existing state directory at `~/docs/plans/rfc/<short-name>/`:
 
 ### 4b-b: Ask Improvement Type
 
-```
-AskUserQuestion(
-  header: "Improvement type",
-  question: "What kind of improvement do you want to make to this RFC?",
-  options: [
-    "Incorporate feedback (Recommended)" -- Address review comments or fix issues raised by reviewers. Provide the feedback in your next message.,
-    "Revise specific sections" -- Update, expand, or rewrite specific sections of the RFC.,
-    "Add new research or data" -- Incorporate new findings, updated metrics, or recently discovered context.,
-    "Full revision" -- Rework the RFC from scratch using the existing document as a starting point.
-  ]
-)
-```
+**Pause and ask the user. Wait for their answer before proceeding.**
+
+> **Improvement type** -- What kind of improvement do you want to make to this RFC?
+>
+> - **Incorporate feedback (Recommended)** -- Address review comments or fix issues raised by reviewers. Provide the feedback in your next message.
+> - **Revise specific sections** -- Update, expand, or rewrite specific sections of the RFC.
+> - **Add new research or data** -- Incorporate new findings, updated metrics, or recently discovered context.
+> - **Full revision** -- Rework the RFC from scratch using the existing document as a starting point.
 
 ### 4b-c: Gather Iteration Context
 
@@ -320,17 +308,13 @@ Execute phases in order. After each phase:
 3. **Autonomous mode:** Log summary, continue unless blocked
 
 **Backtracking (interactive mode only):** After any phase, offer:
-```
-AskUserQuestion(
-  header: "Next step",
-  question: "Phase <X> complete. How should we proceed?",
-  options: [
-    "Continue to <next phase>" -- Proceed with the workflow,
-    "Revisit <previous phase>" -- Go back to refine earlier work. All subsequent phases will re-run.,
-    "Pause and save" -- Save state. Resume later with /rfc.
-  ]
-)
-```
+**Pause and ask the user. Wait for their answer before proceeding.**
+
+> **Next step** -- Phase <X> complete. How should we proceed?
+>
+> - **Continue to <next phase>** -- Proceed with the workflow
+> - **Revisit <previous phase>** -- Go back to refine earlier work. All subsequent phases will re-run.
+> - **Pause and save** -- Save state. Resume later with /rfc.
 
 If user selects backtrack: mark target phase and all subsequent phases as `needs_rerun` in state, then re-run from target phase.
 

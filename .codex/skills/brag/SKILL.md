@@ -29,7 +29,7 @@ Tracks mentees, recurring meetings, and ongoing projects in a state file (`~/doc
 
 ### 1a: Determine Mode
 
-Parse `$ARGUMENTS`:
+Parse the user's invocation prompt:
 
 | Argument | Mode |
 |----------|------|
@@ -262,7 +262,7 @@ Match each name against existing directories using this priority order:
 | 4 | **Substring match** — input is a clear substring of exactly one name | "Mongil" → `Álvaro Mongil/` |
 
 - **Unique match at any priority**: use the full name exactly as it appears (preserving accents/diacritics).
-- **Multiple matches**: use `AskUserQuestion` to present candidates and let the user pick.
+- **Multiple matches**: use `an interactive prompt` to present candidates and let the user pick.
 - **No match**: bootstrap a new People entry.
   Create `~/docs/People/<Full Name>/<Full Name>.md` with minimal frontmatter
   and an Overview section capturing what you know from context.
@@ -285,7 +285,7 @@ Brief context from the brag entry.
 
 For the relationship tag, use your best guess from context:
 `collaborator`, `peer`, `mentee`, `external`, etc.
-If only a first name is available and you can't infer the full name, ask using `AskUserQuestion`.
+If only a first name is available and you can't infer the full name, ask using `an interactive prompt`.
 
 Use full names wrapped in Obsidian wikilinks in brag doc entries
 so they are searchable and linkable in the Obsidian graph.
@@ -340,7 +340,7 @@ This applies to: Slack messages, Slack threads, DMs, and any link that requires 
 ### 3e: Present and Confirm
 
 Show proposed additions grouped by section.
-Use `AskUserQuestion` with `multiSelect: true` to let the user pick which to include.
+Use `an interactive prompt` with `multiSelect: true` to let the user pick which to include.
 Group entries into batches of ~4 options to avoid overwhelming the user.
 
 After confirmation, use `Edit` to append entries under the correct section headers in `~/docs/log/doc.md`.
@@ -355,7 +355,7 @@ Load the question bank from [references/questions.md](references/questions.md).
 
 1. Read state file for context (mentees, guilds, meetings, interview types).
 2. Skip categories already well-covered by automated collection.
-3. Present questions one at a time using `AskUserQuestion`.
+3. Present questions one at a time using `an interactive prompt`.
 4. **Allow free-text input early** — don't force multiple rounds of "tell me more".
    If the user selects "Yes", the next question should accept free-text directly.
 5. For "skip"/"none" answers, move to the next question.
@@ -374,33 +374,25 @@ If the user doesn't have an exact date, use the closest approximation: `(~2026-0
 
 For each current mentee in state:
 
-```
-AskUserQuestion(
-  header: "Mentorship",
-  question: "Any updates on <name> (<context>)?",
-  options: [
-    "Yes" -- Describe in Other,
-    "No updates" -- Skip,
-    "Ended" -- Mark as completed
-  ]
-)
-```
+**Pause and ask the user. Wait for their answer before proceeding.**
+
+> **Mentorship** -- Any updates on <name> (<context>)?
+>
+> - **Yes** -- Describe in Other
+> - **No updates** -- Skip
+> - **Ended** -- Mark as completed
 
 ### Recurring Meeting Check
 
 For each meeting in state:
 
-```
-AskUserQuestion(
-  header: "Meetings",
-  question: "Anything notable from <name> (<cadence>)?",
-  options: [
-    "Yes" -- Describe in Other,
-    "Nothing notable" -- Skip,
-    "No longer attending" -- Remove
-  ]
-)
-```
+**Pause and ask the user. Wait for their answer before proceeding.**
+
+> **Meetings** -- Anything notable from <name> (<cadence>)?
+>
+> - **Yes** -- Describe in Other
+> - **Nothing notable** -- Skip
+> - **No longer attending** -- Remove
 
 ### Remaining Questions
 

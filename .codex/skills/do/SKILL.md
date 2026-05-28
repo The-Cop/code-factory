@@ -73,7 +73,7 @@ REPO_ROOT=$(git rev-parse --show-toplevel)
 
 ### 1a: Parse Flags
 
-Parse `$ARGUMENTS` for flags and strip them from the feature description:
+Parse the user's invocation prompt for flags and strip them from the feature description:
 
 - `--auto` → pre-select autonomous mode
 - `--branch` → pre-select branch-only workdir mode
@@ -92,33 +92,25 @@ set `workdir_mode: branch_only`, and jump to the branch-and-automation question 
 
 **Otherwise, present ALL four options exactly as written. Never omit the Workspace option:**
 
-```
-AskUserQuestion(
-  header: "Feature setup",
-  question: "How should this feature be developed?",
-  options: [
-    "Worktree + branch (Recommended)" -- Isolated worktree with a feature branch. Source repo stays completely clean.,
-    "Branch only" -- Feature branch in the current directory.,
-    "Current branch" -- Work directly on the current branch.,
-    "Workspace" -- Remote cloud dev environment. Spins up a remote CDE on EC2. Claude starts there with /do to create a branch and work.
-  ]
-)
-```
+**Pause and ask the user. Wait for their answer before proceeding.**
+
+> **Feature setup** -- How should this feature be developed?
+>
+> - **Worktree + branch (Recommended)** -- Isolated worktree with a feature branch. Source repo stays completely clean.
+> - **Branch only** -- Feature branch in the current directory.
+> - **Current branch** -- Work directly on the current branch.
+> - **Workspace** -- Remote cloud dev environment. Spins up a remote CDE on EC2. Claude starts there with /do to create a branch and work.
 
 **If `workdir_mode` is `workspace`:** skip the branch question.
 No local branch — the remote `/do` session handles creation.
 If `--auto` was not in arguments, ask automation mode only:
 
-```
-AskUserQuestion(
-  header: "Automation mode",
-  question: "Should the remote workspace session run autonomously?",
-  options: [
-    "Interactive (Recommended)" -- Review at each phase in the workspace,
-    "Autonomous" -- Proceed without interruption in the workspace
-  ]
-)
-```
+**Pause and ask the user. Wait for their answer before proceeding.**
+
+> **Automation mode** -- Should the remote workspace session run autonomously?
+>
+> - **Interactive (Recommended)** -- Review at each phase in the workspace
+> - **Autonomous** -- Proceed without interruption in the workspace
 
 Record: `workdir_mode: workspace`, `interaction_mode` from above, `base_branch: null`. Proceed to Step 2.
 
@@ -136,18 +128,14 @@ DEFAULT_BRANCH=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@
 **Replace `<name>` in option titles with the actual current branch. Use descriptions EXACTLY as written —
 do NOT substitute branch names into descriptions.**
 
-```
-AskUserQuestion(
-  header: "Branch and automation",
-  question: "Configure the new feature branch:",
-  options: [
-    "Default branch, Interactive (Recommended)" -- Branch off the repo default. Review at each phase.,
-    "Default branch, Autonomous" -- Branch off the repo default. Proceed without interruption.,
-    "Current branch (<name>), Interactive" -- Branch off your current checkout. Review at each phase.,
-    "Current branch (<name>), Autonomous" -- Branch off your current checkout. Proceed without interruption.
-  ]
-)
-```
+**Pause and ask the user. Wait for their answer before proceeding.**
+
+> **Branch and automation** -- Configure the new feature branch:
+>
+> - **Default branch, Interactive (Recommended)** -- Branch off the repo default. Review at each phase.
+> - **Default branch, Autonomous** -- Branch off the repo default. Proceed without interruption.
+> - **Current branch (<name>), Interactive** -- Branch off your current checkout. Review at each phase.
+> - **Current branch (<name>), Autonomous** -- Branch off your current checkout. Proceed without interruption.
 
 **If the current branch IS the default branch:** omit the "Current branch" options —
 show only the two "Default branch" options and the free-text option.
@@ -188,14 +176,14 @@ Do not implement directly, regardless of perceived simplicity.
 
 Classify in priority order:
 
-1. **Analysis-only detection** — `$ARGUMENTS` contains analysis keywords
+1. **Analysis-only detection** — the user's invocation prompt contains analysis keywords
    ("analyze", "assess", "evaluate", "audit", "compare", "investigate") WITHOUT implementation keywords
    ("implement", "build", "create", "add", "fix"):
    - Route through REFINE → RESEARCH only (skip PLAN_DRAFT onward)
    - Do NOT create a feature branch or worktree — analysis writes to an output file, not the repo
    - Report findings as a standalone analysis document
 
-2. **State file reference** — `$ARGUMENTS` contains `FEATURE.md` or is a path to an existing state file
+2. **State file reference** — the user's invocation prompt contains `FEATURE.md` or is a path to an existing state file
    (NOT a URL starting with `http://` or `https://`):
    - Verify the file exists, parse phase status, route to **Resume Mode** (Step 5a)
    - Inherit `interaction_mode` from the state file unless overridden in Step 1
@@ -206,16 +194,12 @@ Classify in priority order:
    - **Autonomous mode:** auto-select "Start new feature"
    - **Interactive mode:**
 
-```
-AskUserQuestion(
-  header: "Active runs found",
-  question: "Found <N> active feature runs. What would you like to do?",
-  options: [
-    "Start new feature" -- Begin a fresh workflow for the new feature,
-    "<short-name>: <feature-name> (phase: <phase>)" -- Resume this run
-  ]
-)
-```
+**Pause and ask the user. Wait for their answer before proceeding.**
+
+> **Active runs found** -- Found <N> active feature runs. What would you like to do?
+>
+> - **Start new feature** -- Begin a fresh workflow for the new feature
+> - **<short-name>: <feature-name> (phase: <phase>)** -- Resume this run
 
 5. **No arguments:** list active runs (if any) and ask which to resume, or prompt for a new feature description.
 
@@ -312,16 +296,12 @@ Pass hydrated content to the orchestrator via `<hydrated_context>` tags in the d
 Skip entirely in autonomous mode.
 Ask whether the user wants to brainstorm first:
 
-```
-AskUserQuestion(
-  header: "Brainstorm?",
-  question: "Would you like to brainstorm this idea before starting refinement?",
-  options: [
-    "Start refinement (Recommended)" -- Jump straight into refining the feature specification,
-    "Brainstorm first" -- Explore and sharpen the idea with a thinking partner before committing to building it
-  ]
-)
-```
+**Pause and ask the user. Wait for their answer before proceeding.**
+
+> **Brainstorm?** -- Would you like to brainstorm this idea before starting refinement?
+>
+> - **Start refinement (Recommended)** -- Jump straight into refining the feature specification
+> - **Brainstorm first** -- Explore and sharpen the idea with a thinking partner before committing to building it
 
 **If "Start refinement":** proceed to Step 5.
 
@@ -382,7 +362,7 @@ while current_phase not in [DONE, ANALYSIS_COMPLETE]:
   1. Load phase context per the Context Payloads table in phase-flow.md
   2. Dispatch the phase orchestrator per Step 5c (or the milestone orchestrator per 5d for EXECUTE)
   3. Read updated state per the Return Contract table in phase-flow.md
-  4. If interactive: present a phase summary and AskUserQuestion at every transition.
+  4. If interactive: present a phase summary and an interactive prompt at every transition.
      Do NOT proceed until explicit approval. Apply user feedback (adjust, refine further, re-dispatch).
   5. Apply phase transitions:
      - REFINE approved        → RESEARCH

@@ -25,33 +25,25 @@ Resolve the worktrees directory in order:
 1. If `$REPO_ROOT/../worktrees/` exists, use it.
 2. Otherwise, create `$REPO_ROOT/../worktrees/`.
 
-Build the worktree slug from `$ARGUMENTS`:
+Build the worktree slug from the user's invocation prompt:
 - If arguments provided: lowercase, spaces to hyphens, strip non-alphanumeric (except hyphens), truncate to 50 chars.
 - If no arguments provided:
 
-```
-AskUserQuestion(
-  header: "Worktree name",
-  question: "What is this worktree for? Provide a short description or ticket ID.",
-  options: []
-)
-```
+**Pause and ask the user. Wait for their answer before proceeding.**
+
+> **Worktree name** -- What is this worktree for? Provide a short description or ticket ID.
 
 The worktree path is: `<worktrees-dir>/<REPO_NAME>-<slug>`
 
 **If that path already exists:**
 
-```
-AskUserQuestion(
-  header: "Worktree exists",
-  question: "A worktree already exists at <path>. What would you like to do?",
-  options: [
-    "Reuse existing" -- Use the existing worktree as-is,
-    "Replace" -- Remove the existing worktree and create a fresh one,
-    "Choose different name" -- Provide a different name for the new worktree
-  ]
-)
-```
+**Pause and ask the user. Wait for their answer before proceeding.**
+
+> **Worktree exists** -- A worktree already exists at <path>. What would you like to do?
+>
+> - **Reuse existing** -- Use the existing worktree as-is
+> - **Replace** -- Remove the existing worktree and create a fresh one
+> - **Choose different name** -- Provide a different name for the new worktree
 
 - "Reuse existing": report the existing path and skip creation
 - "Replace": run `git worktree remove <path>` then proceed with creation

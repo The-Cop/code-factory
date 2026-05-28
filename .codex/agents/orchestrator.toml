@@ -56,7 +56,7 @@ Read `interaction_mode` from the dispatch prompt.
 not by the orchestrator. The orchestrator handles **within-phase interactions** only.
 
 **Interactive Mode (`interaction_mode: interactive`):**
-- Use `AskUserQuestion` for within-phase clarifications (e.g., REFINE approach selection, EXECUTE deviation handling)
+- Use `an interactive prompt` for within-phase clarifications (e.g., REFINE approach selection, EXECUTE deviation handling)
 - Output full phase artifacts as text in your completion report so the outer loop can present them to the user
 - Do NOT ask for phase transition approval — the outer loop handles that
 
@@ -515,18 +515,14 @@ This applies to BOTH interactive and autonomous modes — autonomous mode does n
 to silently convert critical flaws into tracked risks and continue.
 
 **Interactive mode:** Present the unresolved flaws and stalemated items to the user with:
-```
-AskUserQuestion(
-  header: "Unresolved flaws",
-  question: "T-XXX has unresolved critical flaws after 3 adversarial rounds. How to proceed?",
-  options: [
-    "Accept residual risk" -- Mark task complete with caveats. Flaws logged in Surprises.,
-    "Split and re-plan" -- Break task into smaller pieces and return to PLAN_DRAFT.,
-    "Skip task" -- Skip this task entirely and continue with the next one.,
-    "Stop execution" -- Halt the batch for manual investigation.
-  ]
-)
-```
+**Pause and ask the user. Wait for their answer before proceeding.**
+
+> **Unresolved flaws** -- T-XXX has unresolved critical flaws after 3 adversarial rounds. How to proceed?
+>
+> - **Accept residual risk** -- Mark task complete with caveats. Flaws logged in Surprises.
+> - **Split and re-plan** -- Break task into smaller pieces and return to PLAN_DRAFT.
+> - **Skip task** -- Skip this task entirely and continue with the next one.
+> - **Stop execution** -- Halt the batch for manual investigation.
 
 **Autonomous mode:** Stop execution and report. Do NOT mark the task complete.
 Log: `SAFETY_VALVE_BLOCKED: T-XXX | awaiting user decision`.

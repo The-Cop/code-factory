@@ -23,7 +23,7 @@ Announce: "I'm using the review skill to review a GitHub pull request."
 
 ## Step 1: Parse Arguments
 
-Tokenize `$ARGUMENTS` on whitespace and classify each token:
+Tokenize the user's invocation prompt on whitespace and classify each token:
 
 | Token | Bucket |
 |-------|--------|
@@ -73,7 +73,7 @@ Determine the PR from `PR_REF`:
 | Branch name | `gh pr list --head <branch> --json number --jq '.[0].number'` |
 | Empty | `gh pr view --json number --jq '.number' 2>/dev/null` |
 
-**If no PR found:** use `AskUserQuestion` to request a PR number, URL, or branch name. List recent PRs with `gh pr list --limit 5` as suggestions.
+**If no PR found:** use `an interactive prompt` to request a PR number, URL, or branch name. List recent PRs with `gh pr list --limit 5` as suggestions.
 
 Bind the resolved number to `PR_NUMBER`.
 
@@ -319,7 +319,7 @@ Do not paraphrase, summarize, or add commentary before or after.
 ### Codex empty-stdout fallback
 
 Shared by Steps 10b.2, 10b.3, and 10b.4:
-- `MODE=codex` → ask the user via `AskUserQuestion` whether to retry with Claude.
+- `MODE=codex` → ask the user via `an interactive prompt` whether to retry with Claude.
 - `MODE=claude-codex` → continue with Claude-only output, prefixed with `Codex unavailable; Claude-only`.
 
 ## Step 10c: Merge Dual Reviews

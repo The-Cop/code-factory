@@ -11,7 +11,7 @@ Manage remote cloud development environments (CDEs) via the `workspaces` CLI. Wo
 
 ## Step 1: Parse Mode
 
-Parse `$ARGUMENTS` to determine the operation:
+Parse the user's invocation prompt to determine the operation:
 
 | Argument prefix | Mode |
 |----------------|------|
@@ -25,20 +25,16 @@ Parse `$ARGUMENTS` to determine the operation:
 
 If no arguments:
 
-```
-AskUserQuestion(
-  header: "Workspace operation",
-  question: "What would you like to do?",
-  options: [
-    "Create" -- Create a new Datadog workspace,
-    "List" -- List existing workspaces,
-    "Delete" -- Delete a workspace,
-    "SSH" -- SSH into a workspace,
-    "Connect" -- Connect IDE to a workspace,
-    "Validate" -- Check prerequisites and setup
-  ]
-)
-```
+**Pause and ask the user. Wait for their answer before proceeding.**
+
+> **Workspace operation** -- What would you like to do?
+>
+> - **Create** -- Create a new Datadog workspace
+> - **List** -- List existing workspaces
+> - **Delete** -- Delete a workspace
+> - **SSH** -- SSH into a workspace
+> - **Connect** -- Connect IDE to a workspace
+> - **Validate** -- Check prerequisites and setup
 
 ## Step 2: Validate Prerequisites
 
@@ -93,13 +89,9 @@ If the user-provided name already starts with the prefix, do not double it.
 
 If no name provided:
 
-```
-AskUserQuestion(
-  header: "Workspace name",
-  question: "Name for the new workspace? (will be prefixed with '$WS_PREFIX-')",
-  options: []
-)
-```
+**Pause and ask the user. Wait for their answer before proceeding.**
+
+> **Workspace name** -- Name for the new workspace? (will be prefixed with '$WS_PREFIX-')
 
 After deriving the final workspace name, check for conflicts:
 
@@ -109,32 +101,24 @@ workspaces list 2>/dev/null | grep -q "<final-name>"
 
 If a workspace with that name already exists, ask the user:
 
-```
-AskUserQuestion(
-  header: "Name conflict",
-  question: "Workspace '<final-name>' already exists. What would you like to do?",
-  options: [
-    "Use a different name" -- I'll pick a new name,
-    "Delete and recreate" -- Delete the existing workspace first,
-    "Connect to existing" -- SSH or connect IDE to the existing workspace
-  ]
-)
-```
+**Pause and ask the user. Wait for their answer before proceeding.**
+
+> **Name conflict** -- Workspace '<final-name>' already exists. What would you like to do?
+>
+> - **Use a different name** -- I'll pick a new name
+> - **Delete and recreate** -- Delete the existing workspace first
+> - **Connect to existing** -- SSH or connect IDE to the existing workspace
 
 ### 3b: Optionally Create Feature Branch
 
 Ask whether to create a new branch for this workspace:
 
-```
-AskUserQuestion(
-  header: "Feature branch?",
-  question: "Create a new feature branch for this workspace?",
-  options: [
-    "Yes — create new branch" -- Create and push a new branch,
-    "No — use current branch '<CURRENT_BRANCH>'" -- Work from the current branch
-  ]
-)
-```
+**Pause and ask the user. Wait for their answer before proceeding.**
+
+> **Feature branch?** -- Create a new feature branch for this workspace?
+>
+> - **Yes — create new branch** -- Create and push a new branch
+> - **No — use current branch '<CURRENT_BRANCH>'** -- Work from the current branch
 
 If yes, create and push:
 
@@ -228,16 +212,12 @@ If name not provided, run `workspaces list` first and ask user to pick.
 
 Confirm before deleting:
 
-```
-AskUserQuestion(
-  header: "Delete workspace",
-  question: "Delete workspace '<name>'? This removes everything including the home directory.",
-  options: [
-    "Yes, delete" -- Permanently delete the workspace,
-    "Cancel" -- Keep the workspace
-  ]
-)
-```
+**Pause and ask the user. Wait for their answer before proceeding.**
+
+> **Delete workspace** -- Delete workspace '<name>'? This removes everything including the home directory.
+>
+> - **Yes, delete** -- Permanently delete the workspace
+> - **Cancel** -- Keep the workspace
 
 If confirmed:
 

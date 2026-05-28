@@ -63,9 +63,9 @@ If you catch yourself thinking any of these, STOP and return to Phase 1:
 
 ## Step 1: Initialize Debug Session
 
-Determine from `$ARGUMENTS` and conversation whether to start a new session or resume:
+Determine from the user's invocation prompt and conversation whether to start a new session or resume:
 
-**If `$ARGUMENTS` references a `~/docs/plans/debug/` state file:** Resume mode (Step 1b).
+**If the user's invocation prompt references a `~/docs/plans/debug/` state file:** Resume mode (Step 1b).
 **Otherwise:** New session.
 
 ### New Session
@@ -142,7 +142,7 @@ Read the state file. Parse `phase` from frontmatter. Route to the appropriate ph
 
 **Goal:** Decide whether to gather Datadog telemetry before reproducing.
 
-Inspect `$ARGUMENTS` and conversation for environment signals.
+Inspect the user's invocation prompt and conversation for environment signals.
 
 | Signals | Scope | Datadog org |
 |---|---|---|
@@ -153,20 +153,10 @@ Inspect `$ARGUMENTS` and conversation for environment signals.
 
 Datadog site is always `datadoghq.com`. Never pass `--site datad0g.com`.
 
-For AMBIGUOUS, use `AskUserQuestion`:
+For AMBIGUOUS, use `an interactive prompt`:
 
-```
-AskUserQuestion(questions=[{
-  "question": "Where is <service> deployed?",
-  "header": "Environment",
-  "multiSelect": false,
-  "options": [
-    {"label": "Production", "description": "Investigate Datadog org 2 (datadoghq.com)"},
-    {"label": "Staging",    "description": "Investigate Datadog org 197728 (datadoghq.com)"},
-    {"label": "Local only", "description": "Skip Phase 0, reproduce locally"}
-  ]
-}])
-```
+**Pause and ask the user. Wait for their answer before proceeding.**
+
 
 Persist the resolved scope to DEBUG.md frontmatter:
 
@@ -565,4 +555,4 @@ Present a debug summary:
 | Phase 0 subagent returns empty results | Widen time window (1h → 4h → 24h). Verify service name matches Datadog `service:` tag. Confirm correct org (prod=2, staging=197728). |
 | `pup` returns 401 in Phase 0 | Subagent must run `pup auth login` (and `pup auth login --org 197728` for staging) and retry. |
 | Wrong site used (`datad0g.com`) | Stop. Re-run without `--site`. Default `datadoghq.com` is correct for both prod and staging services. |
-| Service environment genuinely ambiguous | `AskUserQuestion`: prod / staging / local. Persist to DEBUG.md frontmatter before running Phase 0. |
+| Service environment genuinely ambiguous | `an interactive prompt`: prod / staging / local. Persist to DEBUG.md frontmatter before running Phase 0. |

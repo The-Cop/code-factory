@@ -18,20 +18,16 @@ Run in parallel:
 
 ## Step 2: Parse Input
 
-Extract from `$ARGUMENTS`:
+Extract from the user's invocation prompt:
 
 1. **Ticket ID**: Look for patterns like `[A-Z]+-[0-9]+` (e.g., `PROJ-1234`, `JIRA-567`).
 2. **Description**: The remaining text after removing the ticket ID, or the entire argument if no ticket ID is found.
 
 **If no arguments are provided:**
 
-```
-AskUserQuestion(
-  header: "Branch name",
-  question: "What should the branch be for? Provide a ticket ID and/or short description.",
-  options: []
-)
-```
+**Pause and ask the user. Wait for their answer before proceeding.**
+
+> **Branch name** -- What should the branch be for? Provide a ticket ID and/or short description.
 
 ## Step 3: Build Branch Name
 

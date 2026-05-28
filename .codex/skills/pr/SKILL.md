@@ -9,7 +9,7 @@ Announce: "I'm using the pr skill to open a GitHub pull request from the current
 
 ## Step 1: Gather Context and Determine Mode
 
-Parse `$ARGUMENTS` to determine the operation mode:
+Parse the user's invocation prompt to determine the operation mode:
 
 | Argument | Mode |
 |----------|------|
@@ -17,7 +17,7 @@ Parse `$ARGUMENTS` to determine the operation mode:
 | `--open` (anywhere) | **Create mode** with `open=true` — create a non-draft PR |
 | Anything else or empty | **Create mode** with `open=false` — create a draft PR (default) |
 
-Strip `--open` and `ready` from `$ARGUMENTS` before further parsing (remaining text is treated as title or `--base` flags).
+Strip `--open` and `ready` from the user's invocation prompt before further parsing (remaining text is treated as title or `--base` flags).
 
 Run in parallel:
 - `git branch --show-current` (head branch name)
@@ -37,7 +37,7 @@ Run in parallel:
 
 Base branch resolution, in order:
 
-1. **Explicit override**: if `$ARGUMENTS` contains `--base <branch>`, use that value, set `STACKED=false`, and skip to Step 3.
+1. **Explicit override**: if the user's invocation prompt contains `--base <branch>`, use that value, set `STACKED=false`, and skip to Step 3.
 2. **Stack parent detection** (Step 2a) — if a parent is found, use it as the base.
 3. **Default branch detection** (Step 2b) — fall back to `main` / `master`.
 
@@ -73,7 +73,7 @@ Pick the candidate with the **smallest positive** distance — that is the immed
 Tie-breaking (multiple candidates at the same distance):
 
 1. Prefer a candidate with an open PR: `gh pr list --head <branch> --state open --json number --limit 1`.
-2. If still tied, ask the user via AskUserQuestion to pick the parent.
+2. If still tied, ask the user via an interactive prompt to pick the parent.
 
 If no candidate remains, there is no stack — fall through to Step 2b.
 
@@ -103,16 +103,12 @@ Determine the default branch:
 
 **If no base branch can be determined:**
 
-<interaction>
-AskUserQuestion(
-  header: "Base branch",
-  question: "Could not detect the default branch. Which branch should the PR target?",
-  options: [
-    "main" -- Use main as the base branch,
-    "master" -- Use master as the base branch
-  ]
-)
-</interaction>
+**Pause and ask the user. Wait for their answer before proceeding.**
+
+> **Base branch** -- Could not detect the default branch. Which branch should the PR target?
+>
+> - **main** -- Use main as the base branch
+> - **master** -- Use master as the base branch
 
 ## Step 3: Validate Branch
 
@@ -207,7 +203,7 @@ The diff already answers *what changed line-by-line* — prose that re-narrates 
 ### Title
 
 Determine the PR title using this priority:
-1. If `$ARGUMENTS` provides a title (text that is not a `--base` flag), use it.
+1. If the user's invocation prompt provides a title (text that is not a `--base` flag), use it.
 2. If the branch name contains a ticket ID (e.g. `feat/PROJ-1234-add-widget`), derive a title from it by cleaning up slashes and hyphens into readable text.
 3. If there is a single commit, use its subject as the title.
 4. Otherwise, synthesize a concise title from the commit subjects: identify the primary theme across commits, then write a single phrase capturing the overall change (e.g., commits "Add user model", "Add auth middleware", "Add login endpoint" -> "Add user authentication").
@@ -424,7 +420,7 @@ This step runs when the mode is **Ready** (user invoked `/pr ready`).
 - **On the base branch**: inform the user they need to be on a feature branch. Stop.
 - **No diverging commits**: inform the user there are no new commits for a PR. Stop.
 - **Default branch not detected**: follow the Default Branch Detection procedure in Step 2, then ask the user if all fallbacks fail.
-- **Stack detection ambiguous**: multiple candidate parents at the same distance, none with an open PR — ask the user via AskUserQuestion to pick the parent.
+- **Stack detection ambiguous**: multiple candidate parents at the same distance, none with an open PR — ask the user via an interactive prompt to pick the parent.
 - **Parent branch not on remote**: the detected parent has no `origin/<parent>` ref, so `gh pr create --base` would fail. Inform the user and suggest pushing the parent first; then skip stacking and fall through to default branch detection.
 - **Push failure**: report the push error. Do NOT force-push. Let the user decide how to proceed.
 - **PR already exists**: if `gh pr create` fails because a PR already exists for this branch, report the existing PR URL using `gh pr view --web` or `gh pr view --json url`. Let the user decide whether to update it.

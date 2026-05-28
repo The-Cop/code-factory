@@ -81,7 +81,7 @@ Use this decision tree:
 | Achievements logged for a specific person | `achievements` | `People/<Person>/<Person> - Achievements.md` |
 | Overview / profile / "who is X" | `overview` | `People/<Person>/<Person>.md` |
 | None of the above | `misc` | `Misc/<slug>.md` |
-| **Unclear or ambiguous** | — | **Ask using AskUserQuestion before creating anything** |
+| **Unclear or ambiguous** | — | **Ask using an interactive prompt before creating anything** |
 
 Slug = lowercase letters and hyphens, max ~5 words derived from the topic.
 
@@ -99,7 +99,7 @@ When the user mentions someone by first name, nickname, or partial name:
 | 3 | **Accent-insensitive match** — strip accents before comparing | "Alvaro" → `Álvaro Mongil/`, "Felicite" → `Félicité Lordon/` |
 | 4 | **Substring match** — input is a clear substring of exactly one name | "Mongil" → `Álvaro Mongil/` |
 
-3. **Multiple matches at any priority**: use AskUserQuestion to present candidates and let the user pick.
+3. **Multiple matches at any priority**: use an interactive prompt to present candidates and let the user pick.
 4. **No match**: bootstrap a new People entry.
    Create `~/docs/People/<Full Name>/<Full Name>.md` with:
 
@@ -119,7 +119,7 @@ Brief context from the current interaction.
 ```
 
 For the relationship tag, use your best guess: `report`, `collaborator`, `peer`, `skip-level`, `external`, etc.
-If only a first name is given and you can't infer the full name from context, ask using AskUserQuestion.
+If only a first name is given and you can't infer the full name from context, ask using an interactive prompt.
 
 Use full names wrapped in Obsidian wikilinks (`[[Full Name]]`) in note content for graph integration.
 
@@ -199,7 +199,7 @@ If the user gives a partial date like "March 15" without a year, store as `MM-DD
 4. Results:
    - **0 matches** (in both Obsidian and Google Drive): inform user, offer to create a new note.
    - **1 match**: Read and display the file (or report the Google Drive filename if it's a stub).
-   - **Multiple matches**: use AskUserQuestion to let user pick.
+   - **Multiple matches**: use an interactive prompt to let user pick.
 
 ### EDIT
 
@@ -247,8 +247,8 @@ Bullet-only notes (1:1 logs, achievements, daily entries) can skip the guardrail
 |-------|--------|
 | `~/docs/` directory doesn't exist | Create it with `mkdir -p` and proceed |
 | `~/docs/People/` directory doesn't exist | Create it with `mkdir -p` when first person is mentioned |
-| Person name ambiguous (multiple matches) | Use AskUserQuestion to clarify |
-| Request is completely vague (e.g., "create a note") | Use AskUserQuestion to clarify category before doing anything |
+| Person name ambiguous (multiple matches) | Use an interactive prompt to clarify |
+| Request is completely vague (e.g., "create a note") | Use an interactive prompt to clarify category before doing anything |
 | File has unexpected format | Append content at the end rather than inserting into sections |
 | Glob/Grep returns too many results | Narrow with additional keywords, then present top 5 matches |
 | `~/google-drive/` directory doesn't exist | Skip Google Drive search, continue with Obsidian results only |

@@ -19,7 +19,7 @@ Announce: "I'm using the /code-simplify skill to simplify code for clarity and m
 
 ## Step 1: Detect Scope
 
-Parse `$ARGUMENTS` to determine what to simplify.
+Parse the user's invocation prompt to determine what to simplify.
 
 | Argument | Scope | File enumeration |
 |-|-|-|
@@ -90,7 +90,7 @@ Run these detection checks in parallel:
 | `Makefile` with `check` target | Any | `make check` |
 | `Makefile` with `test` target | Any | `make test` |
 
-**If `$ARGUMENTS` contains `--checks "<cmd1>,<cmd2>"`:** use those commands instead of auto-detected ones.
+**If the user's invocation prompt contains `--checks "<cmd1>,<cmd2>"`:** use those commands instead of auto-detected ones.
 
 **If no checks detected and none specified:** warn the user that no verification checks were found.
 Ask whether to proceed without checks or provide check commands.

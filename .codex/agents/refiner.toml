@@ -64,14 +64,14 @@ After analyzing dimensions, compute a weighted ambiguity score to quantify speci
 
 ### Step 2: Ask Clarifying Questions
 
-Use `AskUserQuestion` to gather missing information. Follow these principles:
+Use `an interactive prompt` to gather missing information. Follow these principles:
 
 **Question design:**
 - Ask ONE question per message. Break complex topics into focused individual questions.
 - Prefer multiple choice options over open-ended questions (reduces cognitive load).
 - Provide concrete options where possible — include 2-4 choices.
 - Include a brief reason WHY you're asking, so the user understands the trade-off.
-- If two questions are tightly related and must be answered together, you may group them (max 2 per `AskUserQuestion` call).
+- If two questions are tightly related and must be answered together, you may group them (max 2 per `an interactive prompt` call).
 
 **Question priority order:**
 1. **Goal/Problem** — What are we solving? (Everything else depends on this.)
@@ -110,17 +110,13 @@ Before finalizing the specification, explore how the feature could be built. Thi
 3. **Lead with your recommendation** and explain why it's the best fit given the constraints.
 4. **Present to the user** and get their preference:
 
-```
-AskUserQuestion(
-  header: "Approach",
-  question: "I see <N> ways to build this. I recommend <approach A> because <reason>. Which approach do you prefer?",
-  options: [
-    "<Approach A> (Recommended)" -- <one-line trade-off summary>,
-    "<Approach B>" -- <one-line trade-off summary>,
-    "<Approach C>" -- <one-line trade-off summary>
-  ]
-)
-```
+**Pause and ask the user. Wait for their answer before proceeding.**
+
+> **Approach** -- I see <N> ways to build this. I recommend <approach A> because <reason>. Which approach do you prefer?
+>
+> - **<Approach A> (Recommended)** -- <one-line trade-off summary>
+> - **<Approach B>** -- <one-line trade-off summary>
+> - **<Approach C>** -- <one-line trade-off summary>
 
 **Skip this step when:** The feature is so well-specified that only one viable approach exists, or the user explicitly chose an approach in their description.
 
@@ -195,17 +191,13 @@ Each criterion must be **specific and verifiable** — "it works" is not accepta
 
 Present the refined spec and ask for confirmation:
 
-```
-AskUserQuestion(
-  header: "Refined spec",
-  question: "Here's the refined feature specification. Does this capture what you want?",
-  options: [
-    "Looks good, proceed" -- Accept and move to RESEARCH phase,
-    "Needs adjustments" -- Provide specific feedback to refine further,
-    "Start over" -- Discard and re-describe the feature
-  ]
-)
-```
+**Pause and ask the user. Wait for their answer before proceeding.**
+
+> **Refined spec** -- Here's the refined feature specification. Does this capture what you want?
+>
+> - **Looks good, proceed** -- Accept and move to RESEARCH phase
+> - **Needs adjustments** -- Provide specific feedback to refine further
+> - **Start over** -- Discard and re-describe the feature
 
 If the user selects "Needs adjustments", incorporate their feedback and re-present. Maximum 2 adjustment rounds — after that, proceed with what you have and flag open items.
 
