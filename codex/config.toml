@@ -6,11 +6,11 @@ approval_policy = "never"
 # [sandbox_workspace_write]
 # network_access = true
 # writable_roots = [
-#   "~/docs",
-#   "~/dev",
-#   "~/dd",
-#   "~/go",
-#   "~/Downloads",
+#   "/Users/rodrigo.fernandes/docs",
+#   "/Users/rodrigo.fernandes/dev",
+#   "/Users/rodrigo.fernandes/dd",
+#   "/Users/rodrigo.fernandes/go",
+#   "/Users/rodrigo.fernandes/Downloads",
 #   "/tmp",
 #   "/private/tmp",
 #   "/private/var/tmp",
@@ -20,16 +20,16 @@ default_permissions = "read-all-write-selected"
 
 [permissions.read-all-write-selected.filesystem]
 ":root" = "read"
-"~/.ssh" = "deny"
-"~/.aws" = "deny"
-"~/.config/gh" = "deny"
+"/Users/rodrigo.fernandes/.ssh" = "deny"
+"/Users/rodrigo.fernandes/.aws" = "deny"
+"/Users/rodrigo.fernandes/.config/gh" = "deny"
 
 [permissions.read-all-write-selected.workspace_roots]
-"~/docs" = true
-"~/dev" = true
-"~/dd" = true
-"~/go" = true
-"~/Downloads" = true
+"/Users/rodrigo.fernandes/docs" = true
+"/Users/rodrigo.fernandes/dev" = true
+"/Users/rodrigo.fernandes/dd" = true
+"/Users/rodrigo.fernandes/go" = true
+"/Users/rodrigo.fernandes/Downloads" = true
 "/tmp" = true
 "/private/tmp" = true
 "/private/var/tmp" = true

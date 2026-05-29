@@ -35,6 +35,7 @@ from pathlib import Path
 
 path = Path(sys.argv[1])
 content = path.read_text()
+home = str(Path.home())
 
 required = [
     "# --- Codex Settings (managed by code-factory from codex/config.toml) ---",
@@ -45,9 +46,9 @@ required = [
     'default_permissions = "read-all-write-selected"',
     "[permissions.read-all-write-selected.filesystem]",
     '":root" = "read"',
-    '"~/.ssh" = "deny"',
-    '"~/.aws" = "deny"',
-    '"~/.config/gh" = "deny"',
+    f'"{home}/.ssh" = "deny"',
+    f'"{home}/.aws" = "deny"',
+    f'"{home}/.config/gh" = "deny"',
     "[permissions.read-all-write-selected.workspace_roots]",
     "[permissions.read-all-write-selected.filesystem.\":workspace_roots\"]",
     '"." = "write"',
