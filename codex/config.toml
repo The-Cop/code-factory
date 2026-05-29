@@ -1,19 +1,44 @@
 # Default-allow Codex execution posture managed by code-factory.
 approval_policy = "never"
-sandbox_mode = "workspace-write"
 
-[sandbox_workspace_write]
-network_access = true
-writable_roots = [
-  "/Users/rodrigo.fernandes/dev",
-  "/Users/rodrigo.fernandes/dd",
-  "/Users/rodrigo.fernandes/go",
-  "/Users/rodrigo.fernandes/Downloads",
-  "~/dev",
-  "~/dd",
-  "~/go",
-  "~/Downloads",
-  "/tmp",
-  "/private/tmp",
-  "/private/var/tmp",
-]
+# sandbox_mode = "workspace-write"
+
+# [sandbox_workspace_write]
+# network_access = true
+# writable_roots = [
+#   "~/docs",
+#   "~/dev",
+#   "~/dd",
+#   "~/go",
+#   "~/Downloads",
+#   "/tmp",
+#   "/private/tmp",
+#   "/private/var/tmp",
+# ]
+
+default_permissions = "read-all-write-selected"
+
+[permissions.read-all-write-selected.filesystem]
+":root" = "read"
+"~/.ssh" = "deny"
+"~/.aws" = "deny"
+"~/.config/gh" = "deny"
+
+[permissions.read-all-write-selected.workspace_roots]
+"~/docs" = true
+"~/dev" = true
+"~/dd" = true
+"~/go" = true
+"~/Downloads" = true
+"/tmp" = true
+"/private/tmp" = true
+"/private/var/tmp" = true
+
+[permissions.read-all-write-selected.filesystem.":workspace_roots"]
+"." = "write"
+
+[permissions.read-all-write-selected.network]
+enabled = true
+
+[permissions.read-all-write-selected.network.domains]
+"*" = "allow"

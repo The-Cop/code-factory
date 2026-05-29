@@ -157,7 +157,6 @@
       "/private/var/tmp"
     ]
   },
-  "model": "opus",
   "enabledMcpjsonServers": [
     "atlassian",
     "datadog-google-workspace",

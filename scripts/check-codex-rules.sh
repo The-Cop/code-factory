@@ -39,34 +39,34 @@ PY
     rm -f "$output_file"
 }
 
-expect_forbidden() {
-    expect_decision "$RULES" forbidden "$@"
+expect_prompt() {
+    expect_decision "$RULES" prompt "$@"
 }
 
 expect_unmatched() {
     expect_decision "$RULES" none "$@"
 }
 
-expect_forbidden sudo ls
-expect_forbidden dd if=/dev/zero of=/tmp/x
-expect_forbidden diskutil eraseDisk APFS test disk2
-expect_forbidden chmod -R 777 .
-expect_forbidden chown -R rodrigo .
-expect_forbidden rm -rf /
-expect_forbidden rm -r -f /Users/rodrigo.fernandes
-expect_forbidden git reset --hard HEAD
-expect_forbidden git clean -fd
-expect_forbidden git clean -fdx
-expect_forbidden git push --force origin main
-expect_forbidden git push origin --force main
-expect_forbidden git push origin main --force
-expect_forbidden git branch -D old-branch
-expect_forbidden git checkout -- README.md
-expect_forbidden git rebase main
-expect_forbidden git stash drop
-expect_forbidden brew install jq
-expect_forbidden npm install -g typescript
-expect_forbidden npm i --global typescript
+expect_prompt sudo ls
+expect_prompt dd if=/dev/zero of=/tmp/x
+expect_prompt diskutil eraseDisk APFS test disk2
+expect_prompt chmod -R 777 .
+expect_prompt chown -R rodrigo .
+expect_prompt rm -rf /
+expect_prompt rm -r -f /Users/rodrigo.fernandes
+expect_prompt git reset --hard HEAD
+expect_prompt git clean -fd
+expect_prompt git clean -fdx
+expect_prompt git push --force origin main
+expect_prompt git push origin --force main
+expect_prompt git push origin main --force
+expect_prompt git branch -D old-branch
+expect_prompt git checkout -- README.md
+expect_prompt git rebase main
+expect_prompt git stash drop
+expect_prompt brew install jq
+expect_prompt npm install -g typescript
+expect_prompt npm i --global typescript
 
 expect_unmatched git status
 expect_unmatched rg pattern

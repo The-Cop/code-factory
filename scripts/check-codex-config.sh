@@ -42,9 +42,19 @@ required = [
     "# --- MCP Servers (managed by code-factory from mcp.json) ---",
     "# --- End MCP Servers ---",
     'approval_policy = "never"',
-    'sandbox_mode = "workspace-write"',
-    "[sandbox_workspace_write]",
-    "network_access = true",
+    'default_permissions = "read-all-write-selected"',
+    "[permissions.read-all-write-selected.filesystem]",
+    '":root" = "read"',
+    '"~/.ssh" = "deny"',
+    '"~/.aws" = "deny"',
+    '"~/.config/gh" = "deny"',
+    "[permissions.read-all-write-selected.workspace_roots]",
+    "[permissions.read-all-write-selected.filesystem.\":workspace_roots\"]",
+    '"." = "write"',
+    "[permissions.read-all-write-selected.network]",
+    "enabled = true",
+    "[permissions.read-all-write-selected.network.domains]",
+    '"*" = "allow"',
     "[mcp_servers.atlassian]",
     "[mcp_servers.unrelated]",
     '[projects."/tmp/code-factory-preserve"]',
@@ -57,7 +67,7 @@ if missing:
 
 singletons = [
     "approval_policy",
-    "sandbox_mode",
+    "default_permissions",
     "mcp_oauth_callback_port",
     "mcp_oauth_callback_url",
 ]
@@ -66,8 +76,11 @@ for key in singletons:
     if count != 1:
         raise SystemExit(f"expected exactly one {key}, found {count}")
 
-if len(re.findall(r"(?m)^\[sandbox_workspace_write\]\s*$", content)) != 1:
-    raise SystemExit("expected exactly one [sandbox_workspace_write] table")
+if re.search(r"(?m)^sandbox_mode\s*=", content):
+    raise SystemExit("legacy sandbox_mode should be removed")
+
+if re.search(r"(?m)^\[sandbox_workspace_write\]\s*$", content):
+    raise SystemExit("legacy [sandbox_workspace_write] table should be removed")
 PY
 
 DOCTOR_JSON="$TMP_DIR/doctor.json"

@@ -1,42 +1,41 @@
 # code-factory Codex execpolicy.
 #
-# The default Codex config uses approval_policy="never", so dangerous commands
-# must be forbidden instead of prompted. Keep these rules narrow: forbidden and
-# prompt decisions win over narrower allow rules when multiple prefixes match.
+# Dangerous commands require explicit prompts. Keep these rules narrow: prompt
+# decisions win over narrower allow rules when multiple prefixes match.
 
 prefix_rule(
     pattern=[["sudo", "mkfs", "fdisk", "shutdown", "reboot", "nvram", "csrutil"]],
-    decision="forbidden",
+    decision="prompt",
     justification="Privilege escalation and system-level mutation are not allowed by default.",
 )
 
 prefix_rule(
     pattern=["dd"],
-    decision="forbidden",
+    decision="prompt",
     justification="Raw block device copying is too destructive for default-allow execution.",
 )
 
 prefix_rule(
     pattern=["diskutil", ["erase", "eraseDisk", "partitionDisk"]],
-    decision="forbidden",
+    decision="prompt",
     justification="Disk erase and partition operations are destructive.",
 )
 
 prefix_rule(
     pattern=["diskutil", "apfs", ["deleteContainer", "deleteVolume", "deleteSnapshot"]],
-    decision="forbidden",
+    decision="prompt",
     justification="APFS delete operations are destructive.",
 )
 
 prefix_rule(
     pattern=[["launchctl", "systemsetup", "networksetup"]],
-    decision="forbidden",
+    decision="prompt",
     justification="Host service, system, and network configuration changes require manual control.",
 )
 
 prefix_rule(
     pattern=["defaults", "write"],
-    decision="forbidden",
+    decision="prompt",
     justification="macOS defaults writes mutate host application or system behavior.",
 )
 
@@ -51,7 +50,7 @@ prefix_rule(
         "/Users/rodrigo.fernandes/.config",
         "/Users/rodrigo.fernandes/.ssh",
     ]],
-    decision="forbidden",
+    decision="prompt",
     justification="Recursive deletion of high-value roots or agent configuration is destructive.",
 )
 
@@ -66,7 +65,7 @@ prefix_rule(
         "/Users/rodrigo.fernandes/.config",
         "/Users/rodrigo.fernandes/.ssh",
     ]],
-    decision="forbidden",
+    decision="prompt",
     justification="Recursive forced deletion of high-value roots or agent configuration is destructive.",
 )
 
@@ -81,90 +80,90 @@ prefix_rule(
         "/Users/rodrigo.fernandes/.config",
         "/Users/rodrigo.fernandes/.ssh",
     ]],
-    decision="forbidden",
+    decision="prompt",
     justification="Forced recursive deletion of high-value roots or agent configuration is destructive.",
 )
 
 prefix_rule(
     pattern=[["chmod", "chown"], ["-R", "-Rf", "-fR"]],
-    decision="forbidden",
+    decision="prompt",
     justification="Recursive ownership and permission changes are high blast-radius host mutations.",
 )
 
 prefix_rule(
     pattern=["git", "push", ["--force", "-f", "--force-with-lease"]],
-    decision="forbidden",
+    decision="prompt",
     justification="Force-pushing rewrites remote history.",
 )
 
 prefix_rule(
     pattern=["git", "push", ["origin", "upstream"], ["--force", "-f", "--force-with-lease"]],
-    decision="forbidden",
+    decision="prompt",
     justification="Force-pushing rewrites remote history.",
 )
 
 prefix_rule(
     pattern=["git", "push", ["origin", "upstream"], ["main", "master", "HEAD"], ["--force", "-f", "--force-with-lease"]],
-    decision="forbidden",
+    decision="prompt",
     justification="Force-pushing rewrites remote history.",
 )
 
 prefix_rule(
     pattern=["git", "reset", "--hard"],
-    decision="forbidden",
+    decision="prompt",
     justification="Hard reset discards local work.",
 )
 
 prefix_rule(
     pattern=["git", "clean", ["-f", "-fd", "-df", "-fx", "-xf", "-fdx", "-fxd", "-dfx", "-dxf", "-xdf", "-xfd", "--force"]],
-    decision="forbidden",
+    decision="prompt",
     justification="Git clean with force deletes untracked work.",
 )
 
 prefix_rule(
     pattern=["git", "branch", "-D"],
-    decision="forbidden",
+    decision="prompt",
     justification="Force-deleting branches can discard unrecovered work.",
 )
 
 prefix_rule(
     pattern=["git", "checkout", "--"],
-    decision="forbidden",
+    decision="prompt",
     justification="Checking out paths from HEAD can discard local edits.",
 )
 
 prefix_rule(
     pattern=["git", "rebase"],
-    decision="forbidden",
+    decision="prompt",
     justification="Rebase rewrites local history and needs explicit operator control.",
 )
 
 prefix_rule(
     pattern=["git", "stash", ["drop", "clear"]],
-    decision="forbidden",
+    decision="prompt",
     justification="Dropping or clearing stashes can discard saved work.",
 )
 
 prefix_rule(
     pattern=["brew", "install"],
-    decision="forbidden",
+    decision="prompt",
     justification="Global package installation mutates the host environment.",
 )
 
 prefix_rule(
     pattern=["npm", ["install", "i"], ["-g", "--global"]],
-    decision="forbidden",
+    decision="prompt",
     justification="Global package installation mutates the host environment.",
 )
 
 prefix_rule(
     pattern=["pnpm", ["add", "install"], ["-g", "--global"]],
-    decision="forbidden",
+    decision="prompt",
     justification="Global package installation mutates the host environment.",
 )
 
 prefix_rule(
     pattern=["yarn", "global"],
-    decision="forbidden",
+    decision="prompt",
     justification="Global package installation mutates the host environment.",
 )
