@@ -37,7 +37,7 @@ Read what the user is telling you. Their input might be:
 - A request to log something specific ("add kudos for Alex")
 - Vague or incomplete ("did some stuff with the API")
 
-**If the update is vague or missing key context, ask for clarification using AskUserQuestion.**
+**If the update is vague or missing key context, ask for clarification using ask_question.**
 The bar is: could the user read this entry 3 months from now and understand what happened?
 If not, ask. For example:
 - "merged a ticket" — which ticket? what was it about?
@@ -64,7 +64,7 @@ Match the input against existing directories using this priority order:
 
 - **Unique match at any priority**: use the full name exactly as it appears
   (preserving accents/diacritics) and add their name tag to frontmatter.
-- **Multiple matches**: use AskUserQuestion to present candidates and let the user pick.
+- **Multiple matches**: use ask_question to present candidates and let the user pick.
 - **No match**: Bootstrap a new People entry.
   Create `~/docs/People/<Full Name>/<Full Name>.md` with minimal frontmatter
   and an Overview section capturing what you know from context.
@@ -87,7 +87,7 @@ Brief context from today's interaction.
 
 For the relationship tag, use your best guess from context:
 `collaborator`, `peer`, `external`, `speaker`, etc.
-If the user only gave a first name and you can't infer the full name, ask using AskUserQuestion.
+If the user only gave a first name and you can't infer the full name, ask using ask_question.
 
 Use full names wrapped in Obsidian wikilinks in the note entries so they are searchable
 and linkable in the Obsidian graph.
@@ -267,9 +267,13 @@ Deduplicate by URL across both queries.
 **W2d: Jira Tickets**
 
 ```
-atlassian_searchJiraIssuesUsingJql(
-  jql = "assignee = currentUser() AND updated >= 'WEEK_START' AND updated <= 'WEEK_END' ORDER BY updated DESC",
-  limit = 50
+atlassian(
+  action = "call_tool",
+  tool = "searchJiraIssuesUsingJql",
+  args = {
+    jql = "assignee = currentUser() AND updated >= 'WEEK_START' AND updated <= 'WEEK_END' ORDER BY updated DESC",
+    limit = 50
+  }
 )
 ```
 
@@ -278,9 +282,13 @@ Note which tickets moved to Done/Resolved — those are accomplishments.
 **W2e: Confluence Pages**
 
 ```
-atlassian_searchConfluenceUsingCql(
-  cql = "contributor = currentUser() AND lastmodified >= 'WEEK_START' AND lastmodified <= 'WEEK_END' AND type = page",
-  limit = 20
+atlassian(
+  action = "call_tool",
+  tool = "searchConfluenceUsingCql",
+  args = {
+    cql = "contributor = currentUser() AND lastmodified >= 'WEEK_START' AND lastmodified <= 'WEEK_END' AND type = page",
+    limit = 20
+  }
 )
 ```
 
@@ -411,9 +419,9 @@ The folder hierarchy (`YYYY/MM/`) naturally groups them.
 | Date computation fails | Fall back to `date +%Y-%m-%d` for today |
 | Daily note has unexpected format | Append new items at the end rather than inserting into sections |
 | People file has unexpected format | Append `## Referenced In` section at the end |
-| User input is entirely empty | Ask what they'd like to log using AskUserQuestion |
+| User input is entirely empty | Ask what they'd like to log using ask_question |
 | `gh` CLI not installed or not authenticated | Skip GitHub collection in weekly summary, warn user, continue |
 | Atlassian MCP tools not available | Skip Jira/Confluence collection in weekly summary, warn user, continue |
 | `~/google-drive/` directory doesn't exist | Skip Google Drive collection in weekly summary, warn user, continue |
 | No daily notes found for the target week | Proceed with GitHub/Jira/Confluence/Google Drive data only; warn user |
-| Weekly summary file already exists | Read it, then use `AskUserQuestion` with options "Overwrite" / "Skip" / "Append" so the user picks without typing |
+| Weekly summary file already exists | Read it, then use `ask_question` with options "Overwrite" / "Skip" / "Append" so the user picks without typing |

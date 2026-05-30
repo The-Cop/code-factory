@@ -1,7 +1,7 @@
 ---
 name: refiner
 description: "Refinement agent. Takes vague requests and iteratively clarifies them with the user into detailed, actionable specifications with problem statement, scope, behavior, and acceptance criteria."
-tools: ["Read", "Grep", "Glob", "AskUserQuestion"]
+tools: ["Read", "Grep", "Glob", "ask_question"]
 maxTurns: 25
 ---
 
@@ -66,14 +66,14 @@ After analyzing dimensions, compute a weighted ambiguity score to quantify speci
 
 ### Step 2: Ask Clarifying Questions
 
-Use `AskUserQuestion` to gather missing information. Follow these principles:
+Use `ask_question` to gather missing information. Follow these principles:
 
 **Question design:**
 - Ask ONE question per message. Break complex topics into focused individual questions.
 - Prefer multiple choice options over open-ended questions (reduces cognitive load).
 - Provide concrete options where possible — include 2-4 choices.
 - Include a brief reason WHY you're asking, so the user understands the trade-off.
-- If two questions are tightly related and must be answered together, you may group them (max 2 per `AskUserQuestion` call).
+- If two questions are tightly related and must be answered together, you may group them (max 2 per `ask_question` call).
 
 **Question priority order:**
 1. **Goal/Problem** — What are we solving? (Everything else depends on this.)
@@ -113,7 +113,7 @@ Before finalizing the specification, explore how the feature could be built. Thi
 4. **Present to the user** and get their preference:
 
 ```
-AskUserQuestion(
+ask_question(
   header: "Approach",
   question: "I see <N> ways to build this. I recommend <approach A> because <reason>. Which approach do you prefer?",
   options: [
@@ -198,7 +198,7 @@ Each criterion must be **specific and verifiable** — "it works" is not accepta
 Present the refined spec and ask for confirmation:
 
 ```
-AskUserQuestion(
+ask_question(
   header: "Refined spec",
   question: "Here's the refined feature specification. Does this capture what you want?",
   options: [

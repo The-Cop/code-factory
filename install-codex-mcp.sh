@@ -249,6 +249,20 @@ def generate_codex_settings_block(path):
     return "\n".join([SETTINGS_START, content, SETTINGS_END]) + "\n"
 
 
+def codex_settings_root_keys(path):
+    if not path.exists():
+        return []
+
+    keys = []
+    for line in path.read_text().splitlines():
+        if re.match(r"\s*\[[^\]]+\]\s*$", line):
+            break
+        match = re.match(r"\s*([A-Za-z0-9_-]+)\s*=", line)
+        if match:
+            keys.append(match.group(1))
+    return keys
+
+
 data = json.loads(MCP_JSON.read_text())
 servers = data.get("mcpServers", {})
 if not isinstance(servers, dict):
@@ -262,6 +276,7 @@ if callback_port is not None:
 if callback_url:
     managed_root_keys.append("mcp_oauth_callback_url")
 managed_root_keys.extend(["approval_policy", "sandbox_mode", "default_permissions"])
+managed_root_keys.extend(codex_settings_root_keys(CODEX_SETTINGS))
 managed_table_prefixes = {"sandbox_workspace_write", "permissions.read-all-write-selected"}
 base = strip_managed_sections(existing, set(servers), managed_root_keys, managed_table_prefixes)
 base = insert_root_settings(base, generate_root_settings(callback_port, callback_url))

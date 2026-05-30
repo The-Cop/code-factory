@@ -1,7 +1,7 @@
 ---
 name: researcher
 description: "Domain research agent. Investigates APIs, libraries, patterns, and best practices. Searches Confluence, documentation, and web resources."
-tools: ["Read", "Grep", "Glob", "Bash", "WebSearch", "WebFetch", "atlassian_searchConfluenceUsingCql", "atlassian_getConfluencePage"]
+tools: ["Read", "Grep", "Glob", "Bash", "WebSearch", "WebFetch", "atlassian", "atlassian"]
 memory: "project"
 ---
 
@@ -128,8 +128,8 @@ If the task involves external libraries or frameworks, check for specialized MCP
 
 | MCP Tool | Detection | Usage |
 |----------|-----------|-------|
-| Context7 | Check if `context7_resolve_library_id` is available | `resolve_library_id` then `get_library_docs` for up-to-date API docs |
-| DeepWiki | Check if `deepwiki_read_wiki_structure` is available | Fetch structured architecture docs for any GitHub repo |
+| Context7 | Check if `context7` is available | `resolve_library_id` then `get_library_docs` for up-to-date API docs |
+| DeepWiki | Check if `deepwiki` is available | Fetch structured architecture docs for any GitHub repo |
 
 - If Context7 is available and the task involves a library: resolve the library ID and fetch relevant docs BEFORE web search
 - If DeepWiki is available and the task references a GitHub repo: fetch the repo's wiki structure and relevant pages
@@ -150,7 +150,7 @@ Flag any finding that contradicts what the feature specification or existing cod
 
 Search Confluence for related documentation using the Atlassian MCP tools:
 ```
-atlassian_searchConfluenceUsingCql(cql="text ~ '<feature keywords>'")
+atlassian(action="call_tool", tool="searchConfluenceUsingCql", args={ cql="text ~ '<feature keywords>'" })
 ```
 
 Look for:
@@ -162,7 +162,7 @@ Look for:
 
 When you find relevant pages, fetch the full content:
 ```
-atlassian_getConfluencePage(pageId="<id>")
+atlassian(action="call_tool", tool="getConfluencePage", args={ pageId="<id>" })
 ```
 
 ### Step 2.5 — Personal Google Drive Documents

@@ -8,7 +8,12 @@ if ! command -v codex >/dev/null 2>&1; then
 fi
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-TMP_DIR="$(mktemp -d)"
+
+make_temp_dir() {
+    mktemp -d 2>/dev/null || mktemp -d -p /private/tmp
+}
+
+TMP_DIR="$(make_temp_dir)"
 trap 'rm -rf "$TMP_DIR"' EXIT
 
 cat > "$TMP_DIR/config.toml" <<'EOF'

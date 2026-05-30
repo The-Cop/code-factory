@@ -26,7 +26,7 @@ Extract from `$ARGUMENTS`:
 **If no arguments are provided:**
 
 ```
-AskUserQuestion(
+ask_question(
   header: "Branch name",
   question: "What should the branch be for? Provide a ticket ID and/or short description.",
   options: []

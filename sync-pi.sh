@@ -83,21 +83,128 @@ has_frontmatter_field() {
     ' "$file"
 }
 
+make_temp_dir() {
+    mktemp -d 2>/dev/null || mktemp -d -p /private/tmp
+}
+
 # rewrite_body: apply body-text rewrites in-place (subagent refs, mcp tool names, plugin paths)
 rewrite_body() {
     local file="$1"
-    local sed_i
-    if sed --version 2>/dev/null | grep -q 'GNU'; then
-        sed_i=(-i)
-    else
-        sed_i=(-i '')
-    fi
-    sed "${sed_i[@]}" 's/subagent_type = "\([^:]*\):\([^"]*\)"/subagent = "\2"/g' "$file"
-    sed "${sed_i[@]}" 's/subagent_type="\([^:]*\):\([^"]*\)"/subagent="\2"/g' "$file"
-    sed "${sed_i[@]}" 's/subagent_type=\([A-Za-z0-9_-]*\)/subagent=\1/g' "$file"
-    sed "${sed_i[@]}" 's/mcp__\([^_]*\)__/\1_/g' "$file"
-    sed "${sed_i[@]}" 's|\${CLAUDE_PLUGIN_ROOT}/skills/[^/]*/|./|g' "$file"
-    sed "${sed_i[@]}" 's|\$CLAUDE_PLUGIN_ROOT/skills/[^/]*/|./|g' "$file"
+    python3 - "$file" << 'PYEOF'
+import re
+import sys
+
+path = sys.argv[1]
+
+
+def pi_tool_name(server: str) -> str:
+    return server.replace("-", "_")
+
+
+def pi_agent_name(name: str) -> str:
+    agent = name.strip().strip('"').strip("'")
+    if ":" in agent:
+        agent = agent.rsplit(":", 1)[1]
+    return {
+        "Explore": "explorer",
+        "general-purpose": "explorer",
+    }.get(agent, agent)
+
+
+def rewrite_mcp_call_blocks(text: str) -> str:
+    lines = text.splitlines(keepends=True)
+    out = []
+    i = 0
+    call_re = re.compile(r'^(\s*)mcp__([A-Za-z0-9_-]+)__([A-Za-z0-9_-]+)\((.*)$')
+
+    while i < len(lines):
+        line = lines[i]
+        match = call_re.match(line)
+        if not match:
+            out.append(line)
+            i += 1
+            continue
+
+        indent, server, tool, rest = match.groups()
+        newline = "\n" if line.endswith("\n") else ""
+        wrapper = pi_tool_name(server)
+
+        if ")" in rest:
+            args, suffix = rest.split(")", 1)
+            args = args.strip()
+            if args:
+                out.append(f'{indent}{wrapper}(action="call_tool", tool="{tool}", args={{ {args} }}){suffix}{newline}')
+            else:
+                out.append(f'{indent}{wrapper}(action="call_tool", tool="{tool}", args={{}}){suffix}{newline}')
+            i += 1
+            continue
+
+        out.append(f"{indent}{wrapper}(\n")
+        out.append(f'{indent}  action = "call_tool",\n')
+        out.append(f'{indent}  tool = "{tool}",\n')
+        out.append(f"{indent}  args = {{\n")
+        i += 1
+        found_close = False
+        while i < len(lines):
+            arg_line = lines[i]
+            if arg_line.strip() == ")":
+                line_newline = "\n" if arg_line.endswith("\n") else ""
+                out.append(f"{indent}  }}\n")
+                out.append(f"{indent}){line_newline}")
+                found_close = True
+                i += 1
+                break
+            out.append(f"{indent}    {arg_line.lstrip()}")
+            i += 1
+
+        if not found_close:
+            out.append(f"{indent}  }}\n")
+            out.append(f"{indent})\n")
+
+    return "".join(out)
+
+
+def rewrite_inline_mcp_call(match: re.Match[str]) -> str:
+    server, tool, args = match.groups()
+    args = args.strip()
+    rendered_args = f"{{ {args} }}" if args else "{}"
+    return f'{pi_tool_name(server)}(action="call_tool", tool="{tool}", args={rendered_args})'
+
+
+text = open(path).read()
+
+text = rewrite_mcp_call_blocks(text)
+text = re.sub(
+    r'\bmcp__([A-Za-z0-9_-]+)__([A-Za-z0-9_-]+)\(([^()\n]*)\)',
+    rewrite_inline_mcp_call,
+    text,
+)
+text = re.sub(
+    r'\bmcp__([A-Za-z0-9_-]+)__[A-Za-z0-9_-]+',
+    lambda m: pi_tool_name(m.group(1)),
+    text,
+)
+
+text = re.sub(r'\bTask\(', 'subagent(', text)
+text = re.sub(r'\bAgent\(', 'subagent(', text)
+text = text.replace('"Task"', '"subagent"')
+text = text.replace("'Task'", "'subagent'")
+text = text.replace('`Task`', '`subagent`')
+text = text.replace('Task tool', 'subagent tool')
+text = text.replace('AskUserQuestion', 'ask_question')
+text = re.sub(
+    r'subagent_type\s*=\s*("[^"]+"|\'[^\']+\'|[A-Za-z0-9_-]+)',
+    lambda m: f'agent = "{pi_agent_name(m.group(1))}"',
+    text,
+)
+text = re.sub(r'\bprompt\s*=', 'task =', text)
+
+text = re.sub(r'\$\{CLAUDE_PLUGIN_ROOT\}/skills/[^/]+/', './', text)
+text = re.sub(r'\$CLAUDE_PLUGIN_ROOT/skills/[^/]+/', './', text)
+
+with open(path, "w") as f:
+    f.write(text)
+PYEOF
 }
 
 # strip_pi_frontmatter: keep name, description, and disable-model-invocation only.
@@ -175,7 +282,7 @@ generate_prompt() {
     cat > "$dest_prompt" <<PROMPTEOF
 <!-- $short_desc -->
 
-Use the \`$skill_name\` skill to handle this request: {{args}}
+Use the \`$skill_name\` skill to handle this request: \$ARGUMENTS
 PROMPTEOF
 }
 
@@ -283,7 +390,7 @@ main() {
 
     if [[ "$CHECK_MODE" == "true" ]]; then
         local tmpdir
-        tmpdir=$(mktemp -d)
+        tmpdir=$(make_temp_dir)
         # Expand $tmpdir at trap-set time: it is `local` to main(), so the trap
         # cannot resolve it later when EXIT fires after main() returns.
         trap "rm -rf '$tmpdir'" EXIT
@@ -313,7 +420,9 @@ main() {
 
                 cp -R "$skill_src_dir" "$SKILLS_DIR/$skill_name"
                 strip_pi_frontmatter "$SKILLS_DIR/$skill_name/SKILL.md"
-                rewrite_body "$SKILLS_DIR/$skill_name/SKILL.md"
+                while IFS= read -r markdown_path; do
+                    rewrite_body "$markdown_path"
+                done < <(find "$SKILLS_DIR/$skill_name" -type f -name "*.md" 2>/dev/null | sort)
 
                 skill_count=$((skill_count + 1))
                 [[ "$CHECK_MODE" != "true" ]] && echo "  SYNC  skill: $skill_name"

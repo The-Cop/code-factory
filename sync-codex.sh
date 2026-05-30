@@ -83,6 +83,10 @@ has_frontmatter_field() {
     ' "$file"
 }
 
+make_temp_dir() {
+    mktemp -d 2>/dev/null || mktemp -d -p /private/tmp
+}
+
 # rewrite_body: apply body-text rewrites to a file in-place
 #   $1 = file path
 rewrite_body() {
@@ -475,7 +479,7 @@ main() {
     # --check mode: sync to temp dirs and compare
     if [[ "$CHECK_MODE" == "true" ]]; then
         local tmpdir
-        tmpdir=$(mktemp -d)
+        tmpdir=$(make_temp_dir)
         # Expand $tmpdir at trap-set time: it is `local` to main(), so the trap
         # cannot resolve it later when EXIT fires after main() returns.
         trap "rm -rf '$tmpdir'" EXIT

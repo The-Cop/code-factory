@@ -73,7 +73,7 @@ Pick the candidate with the **smallest positive** distance — that is the immed
 Tie-breaking (multiple candidates at the same distance):
 
 1. Prefer a candidate with an open PR: `gh pr list --head <branch> --state open --json number --limit 1`.
-2. If still tied, ask the user via AskUserQuestion to pick the parent.
+2. If still tied, ask the user via ask_question to pick the parent.
 
 If no candidate remains, there is no stack — fall through to Step 2b.
 
@@ -104,7 +104,7 @@ Determine the default branch:
 **If no base branch can be determined:**
 
 <interaction>
-AskUserQuestion(
+ask_question(
   header: "Base branch",
   question: "Could not detect the default branch. Which branch should the PR target?",
   options: [
@@ -424,7 +424,7 @@ This step runs when the mode is **Ready** (user invoked `/pr ready`).
 - **On the base branch**: inform the user they need to be on a feature branch. Stop.
 - **No diverging commits**: inform the user there are no new commits for a PR. Stop.
 - **Default branch not detected**: follow the Default Branch Detection procedure in Step 2, then ask the user if all fallbacks fail.
-- **Stack detection ambiguous**: multiple candidate parents at the same distance, none with an open PR — ask the user via AskUserQuestion to pick the parent.
+- **Stack detection ambiguous**: multiple candidate parents at the same distance, none with an open PR — ask the user via ask_question to pick the parent.
 - **Parent branch not on remote**: the detected parent has no `origin/<parent>` ref, so `gh pr create --base` would fail. Inform the user and suggest pushing the parent first; then skip stacking and fall through to default branch detection.
 - **Push failure**: report the push error. Do NOT force-push. Let the user decide how to proceed.
 - **PR already exists**: if `gh pr create` fails because a PR already exists for this branch, report the existing PR URL using `gh pr view --web` or `gh pr view --json url`. Let the user decide whether to update it.

@@ -38,7 +38,7 @@ Do not silently write there.
 Instead, explain why and ask the user:
 
 ```
-AskUserQuestion(
+ask_question(
   header: "Write to managed directory?",
   question: "I need to write to <path>, which is a managed directory (overwritten on sync). Reason: <why>. Proceed?",
   options: [

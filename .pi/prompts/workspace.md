@@ -1,3 +1,3 @@
 <!-- Use when the user wants to manage Datadog workspaces (remote cloud development -->
 
-Use the `workspace` skill to handle this request: {{args}}
+Use the `workspace` skill to handle this request: $ARGUMENTS

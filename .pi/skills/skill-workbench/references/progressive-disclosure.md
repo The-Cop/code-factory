@@ -67,7 +67,7 @@ If all checks pass, proceed. If any fail, analyze. Max 20 minutes.
 
 ```markdown
 Run the background polling script:
-  ${CLAUDE_PLUGIN_ROOT}/skills/{name}/scripts/poll-ci.sh {number}
+  ./scripts/poll-ci.sh {number}
 Run with `run_in_background: true`. The script polls and returns an actionable state.
 ```
 

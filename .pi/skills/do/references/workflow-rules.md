@@ -190,7 +190,7 @@ inspired by GAN (Generative Adversarial Network) dynamics.
 ## Interaction Mode Rules
 
 - If interactive: Present a summary of outputs and STOP at every phase transition checkpoint.
-  Use AskUserQuestion with concrete options (approve, adjust, refine further).
+  Use ask_question with concrete options (approve, adjust, refine further).
   Do NOT proceed to the next phase until the user explicitly approves.
   This applies to EVERY phase: REFINE, RESEARCH, PLAN_DRAFT, PLAN_REVIEW, EXECUTE batches, VALIDATE, and DONE.
 - If autonomous: Make best decisions based on research, proceed without asking

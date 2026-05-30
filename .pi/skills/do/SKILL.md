@@ -93,7 +93,7 @@ set `workdir_mode: branch_only`, and jump to the branch-and-automation question 
 **Otherwise, present ALL four options exactly as written. Never omit the Workspace option:**
 
 ```
-AskUserQuestion(
+ask_question(
   header: "Feature setup",
   question: "How should this feature be developed?",
   options: [
@@ -110,7 +110,7 @@ No local branch — the remote `/do` session handles creation.
 If `--auto` was not in arguments, ask automation mode only:
 
 ```
-AskUserQuestion(
+ask_question(
   header: "Automation mode",
   question: "Should the remote workspace session run autonomously?",
   options: [
@@ -137,7 +137,7 @@ DEFAULT_BRANCH=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@
 do NOT substitute branch names into descriptions.**
 
 ```
-AskUserQuestion(
+ask_question(
   header: "Branch and automation",
   question: "Configure the new feature branch:",
   options: [
@@ -207,7 +207,7 @@ Classify in priority order:
    - **Interactive mode:**
 
 ```
-AskUserQuestion(
+ask_question(
   header: "Active runs found",
   question: "Found <N> active feature runs. What would you like to do?",
   options: [
@@ -313,7 +313,7 @@ Skip entirely in autonomous mode.
 Ask whether the user wants to brainstorm first:
 
 ```
-AskUserQuestion(
+ask_question(
   header: "Brainstorm?",
   question: "Would you like to brainstorm this idea before starting refinement?",
   options: [
@@ -382,7 +382,7 @@ while current_phase not in [DONE, ANALYSIS_COMPLETE]:
   1. Load phase context per the Context Payloads table in phase-flow.md
   2. Dispatch the phase orchestrator per Step 5c (or the milestone orchestrator per 5d for EXECUTE)
   3. Read updated state per the Return Contract table in phase-flow.md
-  4. If interactive: present a phase summary and AskUserQuestion at every transition.
+  4. If interactive: present a phase summary and ask_question at every transition.
      Do NOT proceed until explicit approval. Apply user feedback (adjust, refine further, re-dispatch).
   5. Apply phase transitions:
      - REFINE approved        → RESEARCH

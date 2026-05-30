@@ -5,7 +5,7 @@ Grouped by brag document section. Ask in order. Skip sections already well-cover
 
 ## Question Design
 
-- Present questions one at a time using `AskUserQuestion`.
+- Present questions one at a time using `ask_question`.
 - Always include an option that allows free-text input (e.g., "Yes — describe in Other").
 - Do not force multiple rounds of follow-up — if the user provides details in their first answer, use them directly.
 - Skip categories where automated collection already found 3+ entries.

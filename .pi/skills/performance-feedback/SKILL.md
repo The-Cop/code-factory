@@ -72,8 +72,8 @@ Use the same 4-level name resolution as `/notes` and `/daily`:
 | 3 | **Accent-insensitive match** — strip accents before comparing | "Alvaro" → `Álvaro Mongil/` |
 | 4 | **Substring match** — input is a clear substring of exactly one name | "Mongil" → `Álvaro Mongil/` |
 
-- **Multiple matches**: use AskUserQuestion to present candidates.
-- **No match**: ask for the full name using AskUserQuestion. Do not bootstrap a new People entry — the person must already exist in the vault to have meaningful feedback data.
+- **Multiple matches**: use ask_question to present candidates.
+- **No match**: ask for the full name using ask_question. Do not bootstrap a new People entry — the person must already exist in the vault to have meaningful feedback data.
 
 After resolving, read the person's overview file (`People/<Person>/<Person>.md`)
 to get their attributes (role, team, github username) for external queries.
@@ -150,9 +150,13 @@ gh search prs --reviewed-by={github_username} --created={PERIOD_START}..{PERIOD_
 ### 3h: Jira Tickets
 
 ```
-atlassian_searchJiraIssuesUsingJql(
-  jql = "assignee = '<jira_display_name_or_email>' AND updated >= 'PERIOD_START' AND updated <= 'PERIOD_END' ORDER BY updated DESC",
-  limit = 50
+atlassian(
+  action = "call_tool",
+  tool = "searchJiraIssuesUsingJql",
+  args = {
+    jql = "assignee = '<jira_display_name_or_email>' AND updated >= 'PERIOD_START' AND updated <= 'PERIOD_END' ORDER BY updated DESC",
+    limit = 50
+  }
 )
 ```
 
@@ -161,9 +165,13 @@ Note tickets completed (Done/Resolved), in progress, and any blockers.
 ### 3i: Confluence Pages
 
 ```
-atlassian_searchConfluenceUsingCql(
-  cql = "contributor = '<email>' AND lastmodified >= 'PERIOD_START' AND lastmodified <= 'PERIOD_END' AND type = page",
-  limit = 20
+atlassian(
+  action = "call_tool",
+  tool = "searchConfluenceUsingCql",
+  args = {
+    cql = "contributor = '<email>' AND lastmodified >= 'PERIOD_START' AND lastmodified <= 'PERIOD_END' AND type = page",
+    limit = 20
+  }
 )
 ```
 
@@ -172,7 +180,7 @@ atlassian_searchConfluenceUsingCql(
 After automated collection, ask the user for context that can't be discovered:
 
 ```
-AskUserQuestion(
+ask_question(
   header: "Additional context for <Person>'s review",
   question: "I've gathered evidence from your notes, GitHub, Jira, and Confluence.
 Before I synthesize, is there anything I should know that isn't in these sources?
@@ -299,4 +307,4 @@ tags: [performance-feedback, period-label-slug, fullname-slug]
 | Career plan file doesn't exist | Skip Growth & Development career plan comparison, note the gap |
 | Achievements file doesn't exist | Skip, note the gap |
 | Review period is in the future | Warn user and adjust to today as end date |
-| Feedback file already exists for this period | Read it, then use `AskUserQuestion` with options "Overwrite" / "Append" / "Cancel" so the user picks without typing |
+| Feedback file already exists for this period | Read it, then use `ask_question` with options "Overwrite" / "Append" / "Cancel" so the user picks without typing |

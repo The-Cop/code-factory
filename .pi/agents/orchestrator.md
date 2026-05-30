@@ -1,7 +1,7 @@
 ---
 name: orchestrator
 description: "Orchestrates a single phase (or milestone) of a feature workflow. Owns state persistence, subagent coordination, and git workflow enforcement within its dispatched phase. Single writer of the canonical FEATURE.md state file."
-tools: ["Read", "Write", "Edit", "Grep", "Glob", "Bash", "Task", "Skill", "AskUserQuestion"]
+tools: ["Read", "Write", "Edit", "Grep", "Glob", "Bash", "subagent", "Skill", "ask_question"]
 memory: "project"
 ---
 
@@ -58,7 +58,7 @@ Read `interaction_mode` from the dispatch prompt.
 not by the orchestrator. The orchestrator handles **within-phase interactions** only.
 
 **Interactive Mode (`interaction_mode: interactive`):**
-- Use `AskUserQuestion` for within-phase clarifications (e.g., REFINE approach selection, EXECUTE deviation handling)
+- Use `ask_question` for within-phase clarifications (e.g., REFINE approach selection, EXECUTE deviation handling)
 - Output full phase artifacts as text in your completion report so the outer loop can present them to the user
 - Do NOT ask for phase transition approval — the outer loop handles that
 
@@ -303,10 +303,10 @@ No separate consistency-checker dispatch is needed.
    **Codex Plan Challenge (if codex available):**
 
    ```
-   Task(
-     subagent = "codex-rescue",
+   subagent(
+     agent = "codex-rescue",
      description = "Codex plan challenge: <short-name>",
-     prompt = "Review this software development plan. Challenge the approach, assumptions, and task ordering.
+     task = "Review this software development plan. Challenge the approach, assumptions, and task ordering.
    Focus on what could go wrong that the plan doesn't address.
    Report: concerns ranked Critical/High/Medium. Each: issue, why it matters, concrete fix.
 
@@ -501,10 +501,10 @@ If VERDICT: REJECT:
 **Codex Rescue Attempt (if codex available):** Before classifying stagnation, try Codex:
 
 ```
-Task(
-  subagent = "codex-rescue",
+subagent(
+  agent = "codex-rescue",
   description = "Codex rescue: T-XXX adversarial stagnation",
-  prompt = "<task contract + latest critic verdict + what implementer tried + why it failed + relevant code>"
+  task = "<task contract + latest critic verdict + what implementer tried + why it failed + relevant code>"
 )
 ```
 
@@ -518,7 +518,7 @@ to silently convert critical flaws into tracked risks and continue.
 
 **Interactive mode:** Present the unresolved flaws and stalemated items to the user with:
 ```
-AskUserQuestion(
+ask_question(
   header: "Unresolved flaws",
   question: "T-XXX has unresolved critical flaws after 3 adversarial rounds. How to proceed?",
   options: [

@@ -73,7 +73,7 @@ Determine the PR from `PR_REF`:
 | Branch name | `gh pr list --head <branch> --json number --jq '.[0].number'` |
 | Empty | `gh pr view --json number --jq '.number' 2>/dev/null` |
 
-**If no PR found:** use `AskUserQuestion` to request a PR number, URL, or branch name. List recent PRs with `gh pr list --limit 5` as suggestions.
+**If no PR found:** use `ask_question` to request a PR number, URL, or branch name. List recent PRs with `gh pr list --limit 5` as suggestions.
 
 Bind the resolved number to `PR_NUMBER`.
 
@@ -200,14 +200,14 @@ When `PARALLEL=false` (default), for each module, in a single agent:
 5. Identify missing or insufficient tests and follow-up cleanup needed before merge.
 6. Tick the file coverage checklist for each file reviewed.
 
-When `PARALLEL=true`, replace the per-module loop with one `Task` call per level,
+When `PARALLEL=true`, replace the per-module loop with one `subagent` call per level,
 launched in a single message (all three sub-agents run concurrently):
 
 ```
-Task(
-  subagent_type = "general-purpose",
+subagent(
+  agent = "explorer",
   description = "Review module <module-name>: Level <N>",
-  prompt = <prompt including module files, scope budget, the specific level's
+  task = <prompt including module files, scope budget, the specific level's
             checks from three-level-framework.md, and the required findings
             table format from output-format.md>
 )
@@ -262,10 +262,10 @@ Background mode forks a detached worker and returns in seconds, so the Bash time
 ### Step 10b.1: Delegate (background)
 
 ```
-Task(
-  subagent = "codex-rescue",
+subagent(
+  agent = "codex-rescue",
   description = "Codex PR review: #<PR_NUMBER>",
-  prompt = "--background\n\n" + <template with PR_TITLE, PR Intent, refs, worktree path, framework, output format, and full PR diff>
+  task = "--background\n\n" + <template with PR_TITLE, PR Intent, refs, worktree path, framework, output format, and full PR diff>
 )
 ```
 
@@ -319,7 +319,7 @@ Do not paraphrase, summarize, or add commentary before or after.
 ### Codex empty-stdout fallback
 
 Shared by Steps 10b.2, 10b.3, and 10b.4:
-- `MODE=codex` → ask the user via `AskUserQuestion` whether to retry with Claude.
+- `MODE=codex` → ask the user via `ask_question` whether to retry with Claude.
 - `MODE=claude-codex` → continue with Claude-only output, prefixed with `Codex unavailable; Claude-only`.
 
 ## Step 10c: Merge Dual Reviews

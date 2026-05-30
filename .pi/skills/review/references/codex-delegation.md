@@ -13,10 +13,10 @@ A foreground call dies at the default 120s Bash timeout because real PRs take 3-
 ### 1. Delegate (background)
 
 ```
-Task(
-  subagent_type = "codex:codex-rescue",
+subagent(
+  agent = "codex-rescue",
   description = "Codex PR review: #<PR_NUMBER>",
-  prompt = "--background\n\n" + <see template below>
+  task = "--background\n\n" + <see template below>
 )
 ```
 
@@ -173,7 +173,7 @@ Every changed file must appear and be marked ✓.
 | `/codex:status` output cannot be parsed | Report: "Codex status unparseable." |
 | Worktree creation failed | Pass `Worktree: diff-only fallback` to Codex and explain in the prompt that no live file access is available. |
 
-For every failure mode in `--codex` mode, ask the user via `AskUserQuestion` whether to retry with Claude.
+For every failure mode in `--codex` mode, ask the user via `ask_question` whether to retry with Claude.
 In `--claude-codex` mode, continue with Claude-only output prefixed with `Codex unavailable; Claude-only`.
 
 ## Why this pattern

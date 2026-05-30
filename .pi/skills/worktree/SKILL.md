@@ -30,7 +30,7 @@ Build the worktree slug from `$ARGUMENTS`:
 - If no arguments provided:
 
 ```
-AskUserQuestion(
+ask_question(
   header: "Worktree name",
   question: "What is this worktree for? Provide a short description or ticket ID.",
   options: []
@@ -42,7 +42,7 @@ The worktree path is: `<worktrees-dir>/<REPO_NAME>-<slug>`
 **If that path already exists:**
 
 ```
-AskUserQuestion(
+ask_question(
   header: "Worktree exists",
   question: "A worktree already exists at <path>. What would you like to do?",
   options: [

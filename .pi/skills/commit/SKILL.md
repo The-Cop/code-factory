@@ -29,7 +29,7 @@ Run in parallel:
 **If there are unstaged changes but nothing staged:**
 
 <interaction>
-AskUserQuestion(
+ask_question(
   header: "Stage files",
   question: "No files are staged. What would you like to commit?",
   options: [
@@ -77,7 +77,7 @@ Compute **direct file overlap** between the change set (staged files if any, oth
 **If a fixup candidate is found:**
 
 <interaction>
-AskUserQuestion(
+ask_question(
   header: "Fixup?",
   question: "These changes overlap with commit <sha> (<message>). Create a fixup commit instead?",
   options: [
@@ -100,7 +100,7 @@ Before analyzing, verify the staged set is complete:
 **If related test or doc files are unstaged**, ask the user:
 
 <interaction>
-AskUserQuestion(
+ask_question(
   header: "Include tests?",
   question: "Found unstaged files related to your staged changes: <list files>. Include them in this commit?",
   options: [
@@ -125,7 +125,7 @@ Determine:
 - **Motivation**: the "why" behind the changes. Infer from `$ARGUMENTS`, branch name, conversation context, or the diff itself. **If motivation cannot be inferred from any of these sources**, ask the user:
 
 <interaction>
-AskUserQuestion(
+ask_question(
   header: "Motivation",
   question: "What motivated this change? (for the commit message)",
   options: [

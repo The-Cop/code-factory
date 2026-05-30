@@ -183,7 +183,7 @@ Proposed actions:
 **For disagreements**, present each one explicitly:
 
 <interaction>
-AskUserQuestion(
+ask_question(
   header: "Review disagreement",
   question: "Thread on {path}:{line} — Reviewer says: '{summary}'. How should we handle this?",
   options: [
@@ -197,7 +197,7 @@ AskUserQuestion(
 **For everything else**, ask:
 
 <interaction>
-AskUserQuestion(
+ask_question(
   header: "Proceed?",
   question: "Ready to address {count} threads ({suggestions} suggestions, {changes} code changes, {questions} explanations)?",
   options: [
@@ -386,7 +386,7 @@ Compare timestamps. If the latest commit is **after** the latest bot comment (or
 **Interactive mode:**
 
 <interaction>
-AskUserQuestion(
+ask_question(
   header: "Re-trigger automated reviews?",
   question: "There are new commits since the last Codex reviews. Re-trigger them?",
   options: [
@@ -408,7 +408,7 @@ If triggering: post `@codex` per [references/automated-review-loop.md](reference
 **Interactive mode:**
 
 <interaction>
-AskUserQuestion(
+ask_question(
   header: "Watch CI?",
   question: "Want me to watch CI and auto-fix any failures?",
   options: [

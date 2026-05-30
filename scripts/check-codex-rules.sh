@@ -10,6 +10,10 @@ fi
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 RULES="$ROOT/codex/rules/code-factory.rules"
 
+make_temp_file() {
+    mktemp 2>/dev/null || mktemp /private/tmp/code-factory.XXXXXX
+}
+
 expect_decision() {
     local rules="$1"
     local expected="$2"
@@ -19,7 +23,7 @@ expect_decision() {
     output="$(codex execpolicy check --rules "$rules" "$@" 2>/dev/null)"
 
     local output_file
-    output_file="$(mktemp)"
+    output_file="$(make_temp_file)"
     printf '%s' "$output" > "$output_file"
 
     python3 - "$expected" "$*" "$output_file" <<'PY'
@@ -75,7 +79,7 @@ expect_unmatched python -m pytest tests
 expect_unmatched rm -rf /tmp/code-factory-test
 expect_unmatched git push origin HEAD
 
-TMP_RULES="$(mktemp)"
+TMP_RULES="$(make_temp_file)"
 trap 'rm -f "$TMP_RULES"' EXIT
 cat > "$TMP_RULES" <<'EOF'
 prefix_rule(pattern=["git", "reset"], decision="forbidden")

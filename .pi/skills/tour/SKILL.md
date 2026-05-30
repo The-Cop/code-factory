@@ -20,10 +20,10 @@ Pick mode based on user intent:
 - **Interactive** (default): User said "tour", "walk me through", "show me". Step-by-step with pauses.
 - **Written**: User said "write a tour", "document the architecture", "write up how X works", or added `--written`. Produces a complete markdown document.
 
-If unclear, pick via `AskUserQuestion`:
+If unclear, pick via `ask_question`:
 
 ```
-AskUserQuestion(
+ask_question(
   questions: [{
     header: "Tour mode",
     question: "How would you like the tour delivered?",
@@ -38,7 +38,7 @@ AskUserQuestion(
 
 ## Step 1: Discover Code Context
 
-**Tool preferences**: Use Glob to find files and Grep to search content. Never use `find` or Bash for file discovery. For broad exploration across multiple directories, delegate to a subagent via `Task(subagent=Explore)`.
+**Tool preferences**: Use Glob to find files and Grep to search content. Never use `find` or Bash for file discovery. For broad exploration across multiple directories, delegate to a subagent via `subagent(agent = "explorer")`.
 
 1. Use Glob/Grep to locate relevant source files for `$ARGUMENTS`
 2. If Atlassian MCP tools are available, query for internal documentation and Confluence pages
@@ -80,7 +80,7 @@ Present code as fenced blocks with file path and line numbers:
 | Code needing surrounding context | Include lines above and below the target (up to 30 lines) |
 | Single statement or call | Minimal excerpt with enough context to understand the flow |
 
-Use sub-agents (`Task(subagent=Explore)`) only during Step 1-2 setup research, not during interactive delivery — sub-agents break the conversational flow.
+Use sub-agents (`subagent(agent = "explorer")`) only during Step 1-2 setup research, not during interactive delivery — sub-agents break the conversational flow.
 
 #### Pacing Rules
 
@@ -127,7 +127,7 @@ Produce a complete tour as a single markdown document. No pausing — research e
 #### Process
 
 1. Complete Steps 1-2 (discover + plan)
-2. Use sub-agents (`Task(subagent=Explore)`) in parallel to research each stop — sub-agents are appropriate here since there is no interactive flow to interrupt
+2. Use sub-agents (`subagent(agent = "explorer")`) in parallel to research each stop — sub-agents are appropriate here since there is no interactive flow to interrupt
 3. Write the full tour document
 
 #### Output Format

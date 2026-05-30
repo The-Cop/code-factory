@@ -1,17 +1,17 @@
 # Dispatch Templates
 
 Task dispatch prompt templates for the `/do` outer loop.
-All dispatches use `subagent_type = "productivity:orchestrator"`.
+All dispatches use `agent = "orchestrator"`.
 
 ## Phase Orchestrator (non-EXECUTE)
 
 Used for REFINE, RESEARCH, PLAN_DRAFT, PLAN_REVIEW, VALIDATE, DONE.
 
 ```
-Task(
-  subagent_type = "productivity:orchestrator",
+subagent(
+  agent = "orchestrator",
   description = "<phase>: <short-name>",
-  prompt = "
+  task = "
 <current_phase><PHASE_NAME></current_phase>
 <state_path>~/docs/plans/do/<short-name>/FEATURE.md</state_path>
 <repo_root><REPO_ROOT></repo_root>
@@ -54,10 +54,10 @@ Do NOT advance current_phase — the outer loop handles phase transitions.
 Dispatched once per ready milestone (or per parallel group with no file overlap).
 
 ```
-Task(
-  subagent_type = "productivity:orchestrator",
+subagent(
+  agent = "orchestrator",
   description = "Execute M-XXX: <milestone-name>",
-  prompt = "
+  task = "
 <current_phase>EXECUTE</current_phase>
 <milestone>M-XXX</milestone>
 <state_path>~/docs/plans/do/<short-name>/FEATURE.md</state_path>
@@ -114,10 +114,10 @@ Dispatched once between PLAN_REVIEW approval and EXECUTE entry.
 Skip if `tasks/` already exists (resume scenario).
 
 ```
-Task(
-  subagent_type = "productivity:orchestrator",
+subagent(
+  agent = "orchestrator",
   description = "Generate task bundles: <short-name>",
-  prompt = "
+  task = "
 <current_phase>BUNDLE_GENERATION</current_phase>
 <state_path>~/docs/plans/do/<short-name>/FEATURE.md</state_path>
 <workdir_path><WORKDIR_PATH></workdir_path>
@@ -154,10 +154,10 @@ After generation, verify the task file count matches the task count in PLAN.md.
 Dispatched from Step 4d of SKILL.md when the user chooses "Brainstorm first".
 
 ```
-Task(
-  subagent_type = "productivity:brainstormer",
+subagent(
+  agent = "brainstormer",
   description = "Brainstorm before /do: <slug>",
-  prompt = "
+  task = "
 <brainstorm_file><path>~/docs/brainstorms/<slug>.md</path><content><full file content></content></brainstorm_file>
 <idea><user's feature description></idea>
 <today><TODAY></today>

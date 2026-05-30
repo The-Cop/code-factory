@@ -158,7 +158,7 @@ git show <deletion-commit-sha>
 4. If still uncertain, ask the user:
 
 <interaction>
-AskUserQuestion(
+ask_question(
   header: "Keep or delete?",
   question: "<file> was modified on one side but deleted on the other. The modification: <brief description>. The deletion was in commit <sha>: <message>. The deletion appears <intentional|incidental>. Keep the modified version or delete?",
   options: [
@@ -182,7 +182,7 @@ AskUserQuestion(
 For **merge** conflicts:
 
 <interaction>
-AskUserQuestion(
+ask_question(
   header: "Conflict choice",
   question: "Conflict in <file>: <brief description of both sides>. How should this be resolved?",
   options: [
@@ -197,7 +197,7 @@ AskUserQuestion(
 For **rebase** conflicts (ours = upstream, theirs = your feature branch):
 
 <interaction>
-AskUserQuestion(
+ask_question(
   header: "Conflict choice (rebase)",
   question: "Conflict in <file> while replaying your commit '<commit message>'. Upstream (HEAD) has: <ours summary>. Your branch has: <theirs summary>. How should this be resolved?",
   options: [

@@ -9,10 +9,10 @@ Reference for each phase's agent dispatch, prompts, and expected outputs.
 **Dispatch prompt template:**
 
 ```
-Task(
-  subagent_type = "productivity:refiner",
+subagent(
+  agent = "refiner",
   description = "Refine RFC topic: <short topic>",
-  prompt = "
+  task = "
 <rfc_topic>
 <user's topic>
 </rfc_topic>
@@ -70,10 +70,10 @@ Carry forward the original refined specification and update only the parts affec
 **Dispatch prompt template:**
 
 ```
-Task(
-  subagent_type = "productivity:researcher",
+subagent(
+  agent = "researcher",
   description = "Research for RFC: <short-name>",
-  prompt = "
+  task = "
 <rfc_specification>
 <refined spec from REFINE phase>
 </rfc_specification>
@@ -125,10 +125,10 @@ CRITICAL: Every finding must have a source citation. Do not present assumptions 
 **Dispatch prompt template:**
 
 ```
-Task(
-  subagent_type = "productivity:explorer",
+subagent(
+  agent = "explorer",
   description = "Explore codebase for RFC: <short-name>",
-  prompt = "
+  task = "
 <rfc_specification>
 <refined spec>
 </rfc_specification>
@@ -172,10 +172,10 @@ CRITICAL: Cite specific file paths and line numbers for all findings.
 **Dispatch prompt template:**
 
 ```
-Task(
-  subagent_type = "productivity:planner",
+subagent(
+  agent = "planner",
   description = "Plan RFC writing: <short-name>",
-  prompt = "
+  task = "
 <rfc_specification>
 <refined spec>
 </rfc_specification>
@@ -228,10 +228,10 @@ Do not re-plan sections that are not affected by the iteration.
 **Dispatch prompt template:**
 
 ```
-Task(
-  subagent_type = "productivity:consistency-checker",
+subagent(
+  agent = "consistency-checker",
   description = "Check RFC plan consistency: <short-name>",
-  prompt = "
+  task = "
 <plan>
 <full PLAN.md content>
 </plan>
@@ -286,10 +286,10 @@ Fix minor issues directly. Flag blocking issues that require user decision.
 **Dispatch prompt template:**
 
 ```
-Task(
-  subagent_type = "general-purpose",
+subagent(
+  agent = "explorer",
   description = "Write RFC: <short-name>",
-  prompt = "
+  task = "
 <writing_plan>
 <full PLAN.md content>
 </writing_plan>

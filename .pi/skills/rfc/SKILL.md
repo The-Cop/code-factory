@@ -75,7 +75,7 @@ Check `$ARGUMENTS` for the `--auto` flag. If present, strip it and pre-select au
 ### 1a: RFC Type
 
 ```
-AskUserQuestion(
+ask_question(
   header: "RFC type",
   question: "What type of RFC are you writing?",
   options: [
@@ -88,7 +88,7 @@ AskUserQuestion(
 ### 1b: Interaction Mode
 
 ```
-AskUserQuestion(
+ask_question(
   header: "Interaction mode",
   question: "How should the RFC writing be managed?",
   options: [
@@ -132,7 +132,7 @@ For each discovered `RFC-STATE.md`, read it and check `current_phase`:
 
 4. **RFC topic, active or completed runs exist**:
    ```
-   AskUserQuestion(
+   ask_question(
      header: "Existing RFCs found",
      question: "Found existing RFC runs. What would you like to do?",
      options: [
@@ -215,7 +215,7 @@ Look for existing state directory at `~/docs/plans/rfc/<short-name>/`:
 ### 4b-b: Ask Improvement Type
 
 ```
-AskUserQuestion(
+ask_question(
   header: "Improvement type",
   question: "What kind of improvement do you want to make to this RFC?",
   options: [
@@ -321,7 +321,7 @@ Execute phases in order. After each phase:
 
 **Backtracking (interactive mode only):** After any phase, offer:
 ```
-AskUserQuestion(
+ask_question(
   header: "Next step",
   question: "Phase <X> complete. How should we proceed?",
   options: [

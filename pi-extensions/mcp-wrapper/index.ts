@@ -36,12 +36,20 @@ type JsonRpcRequest = {
   params?: unknown;
 };
 
+type JsonRpcNotification = {
+  jsonrpc: "2.0";
+  method: string;
+  params?: unknown;
+};
+
 type JsonRpcResponse = {
   jsonrpc: "2.0";
   id: number;
   result?: unknown;
   error?: { code: number; message: string; data?: unknown };
 };
+
+type TextContentBlock = { type: "text"; text: string };
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 
@@ -53,6 +61,18 @@ function loadManifest(): Manifest {
 function bearerFromEnv(serverName: string): string | undefined {
   const key = `PI_MCP_${serverName.toUpperCase().replace(/-/g, "_")}_TOKEN`;
   return process.env[key];
+}
+
+function textContent(text: string): TextContentBlock[] {
+  return [{ type: "text", text }];
+}
+
+function toolResult(text: string): { content: TextContentBlock[] } {
+  return { content: textContent(text) };
+}
+
+function errorResult(text: string): { isError: true; content: TextContentBlock[] } {
+  return { isError: true, content: textContent(text) };
 }
 
 // Tokens that suggest a tool mutates state. Used to gate write tools through
@@ -117,13 +137,34 @@ class McpClient {
     return parsed.result;
   }
 
+  private async notify(method: string, params?: unknown): Promise<void> {
+    const body: JsonRpcNotification = {
+      jsonrpc: "2.0",
+      method,
+      params,
+    };
+    const res = await fetch(this.server.url, {
+      method: "POST",
+      headers: this.headers(),
+      body: JSON.stringify(body),
+    });
+
+    const newSid = res.headers.get("mcp-session-id");
+    if (newSid) this.sessionId = newSid;
+
+    if (!res.ok) {
+      throw new Error(`MCP ${this.server.name} ${method}: HTTP ${res.status} ${res.statusText}`);
+    }
+  }
+
   private async ensureInitialized(): Promise<void> {
     if (this.initialized) return;
     await this.post("initialize", {
       protocolVersion: "2025-03-26",
       capabilities: {},
-      clientInfo: { name: "code-factory-mcp-wrapper", version: "0.1.0" },
+      clientInfo: { name: "code-factory-mcp-wrapper", version: "0.1.1" },
     });
+    await this.notify("notifications/initialized");
     this.initialized = true;
   }
 
@@ -208,34 +249,34 @@ export default function register(pi: ExtensionAPI): void {
         try {
           if (action === "list_tools") {
             const tools = await client.listTools();
-            return { content: JSON.stringify(tools, null, 2) };
+            return toolResult(JSON.stringify(tools, null, 2));
           }
           if (action === "describe_tool") {
-            if (!tool) return { isError: true, content: "tool is required for describe_tool" };
+            if (!tool) return errorResult("tool is required for describe_tool");
             const desc = await client.describeTool(tool);
-            return { content: JSON.stringify(desc, null, 2) };
+            return toolResult(JSON.stringify(desc, null, 2));
           }
           if (action === "call_tool") {
-            if (!tool) return { isError: true, content: "tool is required for call_tool" };
+            if (!tool) return errorResult("tool is required for call_tool");
 
             // Gate likely-write tools through a UI confirmation.
             if (WRITE_VERBS.test(tool) && !process.env.PI_MCP_AUTOAPPROVE) {
-              const approved = await ctx.ui.confirm({
-                title: `${server.name}: ${tool}`,
-                description: `Call ${tool} with: ${JSON.stringify(args ?? {})}`,
-              });
+              const approved = await ctx.ui.confirm(
+                `${server.name}: ${tool}`,
+                `Call ${tool} with: ${JSON.stringify(args ?? {})}`,
+              );
               if (!approved) {
-                return { isError: true, content: "User declined the tool call." };
+                return errorResult("User declined the tool call.");
               }
             }
 
             const result = await client.callTool(tool, args ?? {});
-            return { content: JSON.stringify(result, null, 2) };
+            return toolResult(JSON.stringify(result, null, 2));
           }
-          return { isError: true, content: `Unknown action: ${action}` };
+          return errorResult(`Unknown action: ${action}`);
         } catch (err) {
           const msg = err instanceof Error ? err.message : String(err);
-          return { isError: true, content: msg };
+          return errorResult(msg);
         }
       },
     });

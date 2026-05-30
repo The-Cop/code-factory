@@ -153,10 +153,10 @@ Inspect `$ARGUMENTS` and conversation for environment signals.
 
 Datadog site is always `datadoghq.com`. Never pass `--site datad0g.com`.
 
-For AMBIGUOUS, use `AskUserQuestion`:
+For AMBIGUOUS, use `ask_question`:
 
 ```
-AskUserQuestion(questions=[{
+ask_question(questions=[{
   "question": "Where is <service> deployed?",
   "header": "Environment",
   "multiSelect": false,
@@ -191,10 +191,10 @@ Only runs when `scope != LOCAL`. For the full template and command recipe, see
 Dispatch a Task subagent that invokes the `/datadog` skill with the correct org:
 
 ```
-Task(
-  subagent_type = "general-purpose",
+subagent(
+  agent = "explorer",
   description = "Phase 0 telemetry for <service> in <env>",
-  prompt = "
+  task = "
   <context>
   Bug: <one-line description>
   Service: <service-name>
@@ -326,10 +326,10 @@ git bisect good <known-good-commit>
 Dispatch the `explorer` agent to map the relevant code area:
 
 ```
-Task(
-  subagent = "explorer",
+subagent(
+  agent = "explorer",
   description = "Explore bug area: <brief description>",
-  prompt = "
+  task = "
   <bug_context>
   <error message, stack trace, and reproduction steps>
   </bug_context>
@@ -361,10 +361,10 @@ Task(
 If the bug involves external APIs, libraries, or unfamiliar patterns, also dispatch the `researcher`:
 
 ```
-Task(
-  subagent = "researcher",
+subagent(
+  agent = "researcher",
   description = "Research: <library/API involved>",
-  prompt = "
+  task = "
   <bug_context>
   <error message and relevant code snippets>
   </bug_context>
@@ -463,10 +463,10 @@ Fix the root cause — not the symptom. Change one thing at a time.
 Dispatch a fresh `implementer` if the fix requires significant code changes:
 
 ```
-Task(
-  subagent = "implementer",
+subagent(
+  agent = "implementer",
   description = "Fix bug: <brief description>",
-  prompt = "
+  task = "
   <root_cause>
   <confirmed root cause with evidence>
   </root_cause>
@@ -565,4 +565,4 @@ Present a debug summary:
 | Phase 0 subagent returns empty results | Widen time window (1h → 4h → 24h). Verify service name matches Datadog `service:` tag. Confirm correct org (prod=2, staging=197728). |
 | `pup` returns 401 in Phase 0 | Subagent must run `pup auth login` (and `pup auth login --org 197728` for staging) and retry. |
 | Wrong site used (`datad0g.com`) | Stop. Re-run without `--site`. Default `datadoghq.com` is correct for both prod and staging services. |
-| Service environment genuinely ambiguous | `AskUserQuestion`: prod / staging / local. Persist to DEBUG.md frontmatter before running Phase 0. |
+| Service environment genuinely ambiguous | `ask_question`: prod / staging / local. Persist to DEBUG.md frontmatter before running Phase 0. |

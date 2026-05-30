@@ -522,7 +522,7 @@ Required fields: **tasks completed**, **test status**, **discovered bundles this
   ```
 
   When nothing was discovered this batch, replace the Discovered section with
-  `Discovered this batch: none`. Present an `AskUserQuestion` with the usual options:
+  `Discovered this batch: none`. Present an `ask_question` with the usual options:
   continue / adjust / review code / stop.
 
 At milestone boundary (all tasks in milestone complete + tests pass):
@@ -543,7 +543,7 @@ classify the deviation by severity and handle accordingly:
 
 | Severity | Detection | Handling |
 |----------|-----------|---------|
-| **Minor** — wrong assumption, step needs adjusting, small addition | Implementer says "this won't work because..." or "this already exists" or reviewer flags plan misalignment as justified | **Interactive**: propose specific PLAN.md edit, show before/after, ask user approval via `AskUserQuestion` before writing. **Autonomous**: log rationale in Decisions Made, apply edit, continue. |
+| **Minor** — wrong assumption, step needs adjusting, small addition | Implementer says "this won't work because..." or "this already exists" or reviewer flags plan misalignment as justified | **Interactive**: propose specific PLAN.md edit, show before/after, ask user approval via `ask_question` before writing. **Autonomous**: log rationale in Decisions Made, apply edit, continue. |
 | **Major** — wrong approach, missing phase, scope change, fundamental rethink | Implementer reports approach is infeasible, or discovery invalidates multiple downstream tasks | **Both modes**: stop the current batch, append a `DEVIATION_MAJOR` event to events.jsonl with evidence, present the issue to the user. Recommend re-planning (return to PLAN_DRAFT). |
 
 **Plan Amendment Protocol** (applies to both severity levels):
@@ -629,10 +629,10 @@ failure mode that Milestone 1 was built to prevent.
    `Grep(pattern="^status: discovered$", path="tasks/", output_mode="files_with_matches")`
 2. For each bundle, read frontmatter + body and present a triage prompt.
 
-**Interactive mode** — one `AskUserQuestion` per bundle:
+**Interactive mode** — one `ask_question` per bundle:
 
 ```
-AskUserQuestion(
+ask_question(
   header: "Triage T-DISC-<NNN>",
   question: "<one-line summary from bundle> (discovered from <T-XXX>, risk: <level>). Disposition?",
   options: [

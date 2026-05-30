@@ -57,7 +57,7 @@ Compute **direct file overlap** between the full change set (staged + unstaged +
 **If a fixup candidate is found:**
 
 <interaction>
-AskUserQuestion(
+ask_question(
   header: "Fixup?",
   question: "These changes overlap with commit <sha> (<message>). Create a fixup commit instead of new atomic commits?",
   options: [

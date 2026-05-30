@@ -145,11 +145,11 @@ Pick the next batch of pending files from the tracking file — up to 10 files a
 For each file in the batch, launch a `productivity:code-simplifier` agent in the background:
 
 ```
-Task(
-  subagent = "code-simplifier",
+subagent(
+  agent = "code-simplifier",
   description = "Simplify: <filename>",
   run_in_background = true,
-  prompt = "
+  task = "
 <assignment>
 Simplify this file: <absolute-file-path>
 Repository root: <REPO_ROOT>

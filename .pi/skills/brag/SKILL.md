@@ -137,10 +137,14 @@ the quote serves as durable proof of the accomplishment.
 Search for pages the user created or contributed to:
 
 ```
-atlassian_searchConfluenceUsingCql(
-  cloudId = "<from getAccessibleAtlassianResources>",
-  cql = "contributor = currentUser() AND type = page ORDER BY lastModified DESC",
-  limit = 250
+atlassian(
+  action = "call_tool",
+  tool = "searchConfluenceUsingCql",
+  args = {
+    cloudId = "<from getAccessibleAtlassianResources>",
+    cql = "contributor = currentUser() AND type = page ORDER BY lastModified DESC",
+    limit = 250
+  }
 )
 ```
 
@@ -171,9 +175,13 @@ gh api "search/issues?q=reviewed-by:<github_user>+type:pr+created:>=<START_DATE>
 ### 2e: Jira Tickets
 
 ```
-atlassian_searchJiraIssuesUsingJql(
-  jql = "assignee = currentUser() AND updated >= '<START_DATE>' ORDER BY updated DESC",
-  limit = 50
+atlassian(
+  action = "call_tool",
+  tool = "searchJiraIssuesUsingJql",
+  args = {
+    jql = "assignee = currentUser() AND updated >= '<START_DATE>' ORDER BY updated DESC",
+    limit = 50
+  }
 )
 ```
 
@@ -182,10 +190,10 @@ atlassian_searchJiraIssuesUsingJql(
 Launch a background agent to scan git history across working directories:
 
 ```
-Agent(
-  subagent_type = "Explore",
+subagent(
+  agent = "explorer",
   run_in_background = true,
-  prompt = "Scan git log --author=<user> --since=<START_DATE> across <repo dirs>.
+  task = "Scan git log --author=<user> --since=<START_DATE> across <repo dirs>.
             Summarize: features shipped, tools created, docs added, tests improved.
             Bullet points per repo. Research only — do not edit files."
 )
@@ -196,10 +204,10 @@ Agent(
 Launch a background agent to scan Claude Code session history:
 
 ```
-Agent(
-  subagent_type = "Explore",
+subagent(
+  agent = "explorer",
   run_in_background = true,
-  prompt = "Scan ~/.claude/projects/ for accomplished work.
+  task = "Scan ~/.claude/projects/ for accomplished work.
             Identify: skills created, services migrated, bugs fixed, tools built.
             Bullet points. Research only — do not edit files."
 )
@@ -262,7 +270,7 @@ Match each name against existing directories using this priority order:
 | 4 | **Substring match** — input is a clear substring of exactly one name | "Mongil" → `Álvaro Mongil/` |
 
 - **Unique match at any priority**: use the full name exactly as it appears (preserving accents/diacritics).
-- **Multiple matches**: use `AskUserQuestion` to present candidates and let the user pick.
+- **Multiple matches**: use `ask_question` to present candidates and let the user pick.
 - **No match**: bootstrap a new People entry.
   Create `~/docs/People/<Full Name>/<Full Name>.md` with minimal frontmatter
   and an Overview section capturing what you know from context.
@@ -285,7 +293,7 @@ Brief context from the brag entry.
 
 For the relationship tag, use your best guess from context:
 `collaborator`, `peer`, `mentee`, `external`, etc.
-If only a first name is available and you can't infer the full name, ask using `AskUserQuestion`.
+If only a first name is available and you can't infer the full name, ask using `ask_question`.
 
 Use full names wrapped in Obsidian wikilinks in brag doc entries
 so they are searchable and linkable in the Obsidian graph.
@@ -340,7 +348,7 @@ This applies to: Slack messages, Slack threads, DMs, and any link that requires 
 ### 3e: Present and Confirm
 
 Show proposed additions grouped by section.
-Use `AskUserQuestion` with `multiSelect: true` to let the user pick which to include.
+Use `ask_question` with `multiSelect: true` to let the user pick which to include.
 Group entries into batches of ~4 options to avoid overwhelming the user.
 
 After confirmation, use `Edit` to append entries under the correct section headers in `~/docs/log/doc.md`.
@@ -355,7 +363,7 @@ Load the question bank from [references/questions.md](references/questions.md).
 
 1. Read state file for context (mentees, guilds, meetings, interview types).
 2. Skip categories already well-covered by automated collection.
-3. Present questions one at a time using `AskUserQuestion`.
+3. Present questions one at a time using `ask_question`.
 4. **Allow free-text input early** — don't force multiple rounds of "tell me more".
    If the user selects "Yes", the next question should accept free-text directly.
 5. For "skip"/"none" answers, move to the next question.
@@ -375,7 +383,7 @@ If the user doesn't have an exact date, use the closest approximation: `(~2026-0
 For each current mentee in state:
 
 ```
-AskUserQuestion(
+ask_question(
   header: "Mentorship",
   question: "Any updates on <name> (<context>)?",
   options: [
@@ -391,7 +399,7 @@ AskUserQuestion(
 For each meeting in state:
 
 ```
-AskUserQuestion(
+ask_question(
   header: "Meetings",
   question: "Anything notable from <name> (<cadence>)?",
   options: [
