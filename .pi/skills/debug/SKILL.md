@@ -192,7 +192,7 @@ Dispatch a Task subagent that invokes the `/datadog` skill with the correct org:
 
 ```
 subagent(
-  agent = "explorer",
+  agent = "general-purpose",
   description = "Phase 0 telemetry for <service> in <env>",
   task = "
   <context>

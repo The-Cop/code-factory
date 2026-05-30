@@ -1,6 +1,6 @@
 {
   "name": "code-factory-subagent-runner",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Dependency-free subagent runner for pi.dev. Delegates tasks to per-agent system prompts via `pi -p` subprocesses.",
   "type": "module",
   "private": true,

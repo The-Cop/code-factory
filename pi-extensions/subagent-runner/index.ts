@@ -79,7 +79,6 @@ function resolveAgentName(name: string): string {
   const unqualified = name.includes(":") ? name.split(":").pop() ?? name : name;
   const aliases: Record<string, string> = {
     Explore: "explorer",
-    "general-purpose": "explorer",
   };
   return aliases[unqualified] ?? unqualified;
 }

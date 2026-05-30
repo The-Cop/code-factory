@@ -43,7 +43,7 @@ subagent has no prior context — give it everything it needs in the prompt.
 
 ```
 subagent(
-  agent = "explorer",
+  agent = "general-purpose",
   description = "Phase 0 telemetry for <service> in <env>",
   task = "
   <context>

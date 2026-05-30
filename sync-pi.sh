@@ -107,7 +107,6 @@ def pi_agent_name(name: str) -> str:
         agent = agent.rsplit(":", 1)[1]
     return {
         "Explore": "explorer",
-        "general-purpose": "explorer",
     }.get(agent, agent)
 
 
@@ -381,6 +380,31 @@ build_extensions() {
     done
 }
 
+# write_builtin_general_purpose_agent: Pi skills commonly delegate broad
+# writing/implementation work to Claude's general-purpose agent. Pi needs a
+# concrete local agent for those calls instead of aliasing them to explorer.
+write_builtin_general_purpose_agent() {
+    cat > "$AGENTS_DIR/general-purpose.md" << 'EOF'
+---
+name: general-purpose
+description: "General-purpose agent for broad research, writing, implementation, and coordination tasks when no specialized agent is required."
+tools: ["Read", "Write", "Edit", "Grep", "Glob", "Bash", "Skill", "subagent", "ask_question"]
+---
+# General Purpose Agent
+
+You are a general-purpose execution agent for Pi workflows.
+
+Take the requested task literally. You may research, write documents, edit files,
+run local validation commands, and coordinate with other tools when the task
+requires it. Preserve user changes you did not make, keep edits scoped to the
+task, and report concise outcomes with any validation performed.
+
+Use `ask_question` only when required information cannot be inferred from the
+task or local context. If the task includes an output path, create or update that
+path directly.
+EOF
+}
+
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
@@ -454,6 +478,10 @@ main() {
             done < <(find "$plugin_dir/agents" -name "*.md" 2>/dev/null | sort)
         fi
     done < <(discover_plugins)
+
+    write_builtin_general_purpose_agent
+    agent_count=$((agent_count + 1))
+    [[ "$CHECK_MODE" != "true" ]] && echo "  SYNC  agent: general-purpose"
 
     # --- Extensions (mcp-wrapper, subagent-runner, etc.) ---
     build_extensions

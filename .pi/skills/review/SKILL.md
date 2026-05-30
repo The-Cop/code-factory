@@ -205,7 +205,7 @@ launched in a single message (all three sub-agents run concurrently):
 
 ```
 subagent(
-  agent = "explorer",
+  agent = "general-purpose",
   description = "Review module <module-name>: Level <N>",
   task = <prompt including module files, scope budget, the specific level's
             checks from three-level-framework.md, and the required findings

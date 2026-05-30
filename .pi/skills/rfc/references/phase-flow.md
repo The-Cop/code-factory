@@ -287,7 +287,7 @@ Fix minor issues directly. Flag blocking issues that require user decision.
 
 ```
 subagent(
-  agent = "explorer",
+  agent = "general-purpose",
   description = "Write RFC: <short-name>",
   task = "
 <writing_plan>
