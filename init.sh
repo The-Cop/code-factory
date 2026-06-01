@@ -9,7 +9,8 @@
 #   4. Runs sync-opencode.sh to generate OpenCode assets in the repo.
 #   5. Symlinks .opencode/{skills,agents,commands} into ~/.config/opencode/.
 #   6. Installs managed Codex config, skills, agents, and execpolicy rules.
-#   7. Updates Claude Code CLI and all installed marketplace plugins.
+#   7. Installs or updates the OpenSpec CLI.
+#   8. Updates Claude Code CLI and all installed marketplace plugins.
 #
 # Behavior:
 #   - If the destination is an existing symlink, it is removed and re-created.
@@ -85,6 +86,34 @@ NODEENV
             echo "  SKIP  node not found, install manually from https://nodejs.org"
             ;;
     esac
+fi
+echo ""
+
+echo "Installing OpenSpec CLI..."
+if [[ "${OPENSPEC_INSTALL:-1}" == "0" ]]; then
+    echo "  SKIP  OPENSPEC_INSTALL=0"
+elif ! command -v node &>/dev/null; then
+    echo "  SKIP  node not found (install Node.js 20.19+ and re-run init)"
+elif ! node -e 'const [major, minor] = process.versions.node.split(".").map(Number); process.exit(major > 20 || (major === 20 && minor >= 19) ? 0 : 1)' 2>/dev/null; then
+    errors+=("openspec: Node.js 20.19+ is required")
+    echo "  FAIL  node $(node --version) is too old; OpenSpec requires Node.js 20.19+"
+elif ! command -v npm &>/dev/null; then
+    echo "  SKIP  npm not found (install Node.js 20.19+ and re-run init)"
+else
+    OPENSPEC_PACKAGE="${OPENSPEC_NPM_PACKAGE:-@fission-ai/openspec@latest}"
+    OPENSPEC_NPM_CACHE="${OPENSPEC_NPM_CACHE:-$HOME/.cache/code-factory/npm}"
+    mkdir -p "$OPENSPEC_NPM_CACHE"
+    if NPM_CONFIG_CACHE="$OPENSPEC_NPM_CACHE" npm install -g "$OPENSPEC_PACKAGE" 2>&1 | tail -3; then
+        if command -v openspec &>/dev/null; then
+            echo "  OK  openspec installed ($(openspec --version))"
+        else
+            errors+=("openspec: npm install succeeded but openspec is not on PATH")
+            echo "  FAIL  openspec installed but not found on PATH"
+        fi
+    else
+        errors+=("openspec: npm install failed")
+        echo "  FAIL  npm install -g $OPENSPEC_PACKAGE"
+    fi
 fi
 echo ""
 

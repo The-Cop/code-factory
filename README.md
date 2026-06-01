@@ -21,6 +21,10 @@ rtfpessoa's personal marketplace for [Claude Code](https://docs.anthropic.com/en
 | `/datadog` | productivity | Query Datadog products (logs, metrics, APM, monitors) via pup CLI |
 | `/code-simplify` | productivity | Simplify and refactor code for clarity without changing behavior |
 | `/ai-cli` | productivity | Evaluate and improve CLI design for AI agent usage |
+| `/openspec-propose` | productivity | Create OpenSpec changes and generate proposal/design/spec/task artifacts |
+| `/openspec-apply-change` | productivity | Implement pending tasks from an OpenSpec change |
+| `/openspec-archive-change` | productivity | Archive completed OpenSpec changes |
+| `/openspec-explore` | productivity | Explore OpenSpec ideas and artifacts without implementation |
 | `/skill-workbench` | productivity | Create or improve skills and agents |
 | `/review` | productivity | Review a pull request with structured findings |
 | `/tour` | productivity | Guided code walkthroughs (interactive or written) |
@@ -57,6 +61,7 @@ rtfpessoa's personal marketplace for [Claude Code](https://docs.anthropic.com/en
 - `/datadog` -- Datadog product query via pup CLI: APM, logs, metrics, monitors, error tracking, RUM, infrastructure, security signals, incidents, SLOs, synthetics, CI/CD, and 30+ other API domains.
 - `/code-simplify` -- Code simplification across any scope (file, directory, package, branch diff, staged changes, or entire repo). Preserves behavior while improving clarity and maintainability.
 - `/ai-cli` -- CLI design evaluation and improvement for AI agents: scores against 8 Agent DX axes aligned with the AXI (Agent eXperience Interface) framework (machine-readable output, raw payload input, schema introspection, context window discipline, input hardening, safety rails, agent knowledge packaging, efficiency & composition), recommends prioritized improvements, and guides implementation.
+- `/openspec-propose`, `/openspec-apply-change`, `/openspec-archive-change`, `/openspec-explore` -- OpenSpec/OPSX workflows for proposal generation, task implementation, archive/finalization, and read-only exploration. The OpenSpec CLI stays npm-managed by `init.sh`; the skills are vendored here so Claude Code, OpenCode, Codex, and Pi receive the same versioned workflow instructions.
 - `/skill-workbench` -- Skill and agent creation/improvement toolkit.
 
 **Agents:**
@@ -212,6 +217,7 @@ User descriptions are wrapped in `<feature_request>` tags to prevent prompt inje
      | `claude/CLAUDE.md` | `~/.claude/CLAUDE.md` |
 
    - Installs MCP servers from `mcp.json` into Claude Code and Codex, and regenerates the OpenCode MCP block.
+   - Installs or updates the OpenSpec CLI with npm (`@fission-ai/openspec@latest` by default).
    - Symlinks files from `hooks/` into `~/.claude/hooks/`.
    - Regenerates `.opencode/` assets by running `./sync-opencode.sh`.
    - Symlinks generated `.opencode/{skills,agents,commands,plugins}` into `~/.config/opencode/`.
@@ -229,6 +235,7 @@ User descriptions are wrapped in `<feature_request>` tags to prevent prompt inje
 ## Development Notes
 
 - Source of truth is under `productivity/` and `git/`; do not edit generated files under `.opencode/` directly.
+- OpenSpec uses a hybrid model: `init.sh` keeps the CLI up to date through npm, while this repo owns the workflow skills so generated global agent assets remain deterministic. Set `OPENSPEC_INSTALL=0` to skip CLI installation, `OPENSPEC_NPM_PACKAGE=@fission-ai/openspec@1.3.1` to pin a package, or `OPENSPEC_NPM_CACHE=<path>` to override the npm cache used by bootstrap.
 - `make all` runs checks (`make check`) and config linting (`make lint`).
 - `make check` also verifies OpenCode/Codex/Pi sync freshness and managed Codex config/rules.
 - Re-run `./init.sh` after changing local bootstrap-managed files.

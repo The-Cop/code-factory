@@ -1,0 +1,4 @@
+interface:
+  display_name: "Openspec Apply Change"
+  short_description: "Use when the user wants to implement an OpenSpec change, apply OPSX tasks, co..."
+  default_prompt: "Use $openspec-apply-change to implement an OpenSpec change, apply OPSX tasks, continue OpenSpec implementation work, or work through tasks from `op..."

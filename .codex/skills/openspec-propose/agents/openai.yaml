@@ -1,0 +1,4 @@
+interface:
+  display_name: "Openspec Propose"
+  short_description: "Use when the user wants to create an OpenSpec change proposal, generate OpenS..."
+  default_prompt: "Use $openspec-propose to create an OpenSpec change proposal, generate OpenSpec artifacts, start an OPSX/spec-driven change, or turn a feature ..."
