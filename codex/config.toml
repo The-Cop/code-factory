@@ -4,9 +4,7 @@ model_reasoning_effort = "xhigh"
 
 # Default-allow Codex execution posture managed by code-factory.
 approval_policy = "never"
-
-# sandbox_mode = "workspace-write"
-
+sandbox_mode = "danger-full-access"
 # [sandbox_workspace_write]
 # network_access = true
 # writable_roots = [
@@ -25,8 +23,7 @@ default_permissions = "read-all-write-selected"
 [permissions.read-all-write-selected.filesystem]
 ":root" = "read"
 "/Users/rodrigo.fernandes/.ssh" = "deny"
-"/Users/rodrigo.fernandes/.aws" = "deny"
-"/Users/rodrigo.fernandes/.config/gh" = "deny"
+"/Users/rodrigo.fernandes/.ssh/known_hosts" = "read"
 
 [permissions.read-all-write-selected.workspace_roots]
 "/Users/rodrigo.fernandes/docs" = true
