@@ -12,10 +12,10 @@
 #   bot-pattern          Regex for bot login names (default: "bot|app|\[bot\]")
 #   poll-interval        Seconds between polls (default: 30)
 #   max-polls            Maximum poll attempts (default: 30, ~15 min at 30s)
-#   log-every            Emit unchanged progress every N polls (default: 5)
+#   log-every            Emit unchanged progress every N polls (default: 0, quiet)
 #
 # Exit states (printed to stdout):
-#   REVIEWS_READY     New bot review comments detected and :eyes: cleared
+#   REVIEWS_READY     New bot review comments detected and :eyes: cleared (JSON file path follows)
 #   NO_NEW_REVIEWS    Timeout with no bot activity (reviewer may not be configured)
 #   TIMEOUT           Max polls reached while :eyes: still active
 
@@ -28,17 +28,25 @@ KNOWN_REVIEW_COUNT="${4:?Usage: poll-reviews.sh <pr-number> <owner/repo> <known-
 BOT_PATTERN="${5:-bot|app|\\[bot\\]}"
 POLL_INTERVAL="${6:-30}"
 MAX_POLLS="${7:-30}"
-LOG_EVERY="${8:-5}"
+LOG_EVERY="${8:-0}"
 
 eyes_active=false
 
-if ! [[ "$LOG_EVERY" =~ ^[0-9]+$ ]] || [ "$LOG_EVERY" -lt 1 ]; then
-  LOG_EVERY=5
+if ! [[ "$LOG_EVERY" =~ ^[0-9]+$ ]]; then
+  LOG_EVERY=0
 fi
 
 should_log() {
   local poll="$1"
+  [ "$LOG_EVERY" -gt 0 ] || return 1
   [ "$poll" -eq 1 ] || [ "$poll" -eq "$MAX_POLLS" ] || [ $((poll % LOG_EVERY)) -eq 0 ]
+}
+
+write_json_file() {
+  local kind="$1"
+  local file="/tmp/pr-fix-reviews-${PR_NUMBER}-${kind}.json"
+  cat > "$file"
+  echo "$file"
 }
 
 bot_root_comments_json() {
@@ -114,12 +122,12 @@ for i in $(seq 1 "$MAX_POLLS"); do
   CURRENT_COMMENTS=$(echo "$COMMENTS_JSON" | jq 'length')
 
   if [ "$CURRENT_COMMENTS" -gt "$KNOWN_COMMENT_COUNT" ]; then
+    NEW_COMMENTS=$(echo "$COMMENTS_JSON" | jq --argjson known "$KNOWN_COMMENT_COUNT" '.[$known:]')
+    COMMENTS_FILE=$(echo "$NEW_COMMENTS" | write_json_file "comments")
     echo ""
     echo "REVIEWS_READY"
     echo "previous_comments=$KNOWN_COMMENT_COUNT current_comments=$CURRENT_COMMENTS"
-    echo ""
-    echo "NEW_COMMENTS:"
-    echo "$COMMENTS_JSON" | jq --argjson known "$KNOWN_COMMENT_COUNT" '.[$known:]'
+    echo "NEW_COMMENTS_FILE: $COMMENTS_FILE"
     exit 0
   fi
 
@@ -128,12 +136,12 @@ for i in $(seq 1 "$MAX_POLLS"); do
   CURRENT_REVIEWS=$(echo "$REVIEWS_JSON" | jq 'length')
 
   if [ "$CURRENT_REVIEWS" -gt "$KNOWN_REVIEW_COUNT" ]; then
+    NEW_REVIEWS=$(echo "$REVIEWS_JSON" | jq --argjson known "$KNOWN_REVIEW_COUNT" '.[$known:]')
+    REVIEWS_FILE=$(echo "$NEW_REVIEWS" | write_json_file "reviews")
     echo ""
     echo "REVIEWS_READY"
     echo "previous_reviews=$KNOWN_REVIEW_COUNT current_reviews=$CURRENT_REVIEWS"
-    echo ""
-    echo "NEW_REVIEWS:"
-    echo "$REVIEWS_JSON" | jq --argjson known "$KNOWN_REVIEW_COUNT" '.[$known:]'
+    echo "NEW_REVIEWS_FILE: $REVIEWS_FILE"
     exit 0
   fi
 

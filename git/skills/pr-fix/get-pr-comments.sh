@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Usage: ./get-pr-comments.sh [-v] [-a] [-f] [-o] [pr-number|pr-url|comment-url]
+# Usage: ./get-pr-comments.sh [-v] [-a] [-f] [-o] [-p] [pr-number|pr-url|comment-url]
 #
 # Fetches PR review comment threads as structured JSON with resolution status.
 # Uses GitHub GraphQL API with pagination for accurate thread data.
@@ -10,6 +10,7 @@
 #   -a    Actionable only - filter to unresolved and not outdated threads
 #   -f    Full mode - include diff_hunk fields (default: compact without diff_hunks)
 #   -o    Oldest-first chronological order (default: newest first)
+#   -p    Path-only large output - when output exceeds 25KB, print a small JSON pointer
 #
 # Input formats:
 #   No argument       Auto-detect PR from current branch
@@ -29,13 +30,14 @@
 #
 # Auto-fallback for large output:
 #   When output exceeds 25KB, writes to /tmp/pr-comments-{owner}-{repo}-{pr}.json
-#   and prints a message to stderr. Use the Read tool on that path.
+#   and prints a message to stderr. With -p, stdout is a small JSON pointer.
 
 SPECIFIC_COMMENT_ID=""
 VERBOSE=0
 ACTIONABLE_ONLY=0
 FULL_MODE=0
 OLDEST_FIRST=0
+PATH_ONLY_ON_LARGE=0
 
 log_verbose() {
   if [ "$VERBOSE" -eq 1 ]; then
@@ -48,12 +50,13 @@ log_error() {
 }
 
 # Parse flags
-while getopts "vafo" opt; do
+while getopts "vafop" opt; do
   case $opt in
     v) VERBOSE=1; log_verbose "Verbose mode enabled" ;;
     a) ACTIONABLE_ONLY=1; log_verbose "Actionable-only mode enabled" ;;
     f) FULL_MODE=1; log_verbose "Full mode enabled (including diff_hunks)" ;;
     o) OLDEST_FIRST=1; log_verbose "Oldest-first mode enabled" ;;
+    p) PATH_ONLY_ON_LARGE=1; log_verbose "Path-only mode enabled for large output" ;;
     \?) log_error "Invalid option: -$OPTARG"; exit 1 ;;
   esac
 done
@@ -148,7 +151,8 @@ log_verbose "PR accessible, querying review threads via GraphQL"
 
 # Fetch review threads with pagination
 # Key difference from get-pr-feedback: includes thread-level `id` for resolveReviewThread mutation
-COMMENTS_JSON=$(gh api graphql --paginate -f query="
+# shellcheck disable=SC2016 # jq program and GraphQL cursor use literal $ names.
+if ! COMMENTS_JSON=$(gh api graphql --paginate -f query="
 query(\$cursor: String) {
   repository(owner: \"${OWNER}\", name: \"${REPO_NAME}\") {
     pullRequest(number: ${PR_NUMBER}) {
@@ -218,9 +222,7 @@ query(\$cursor: String) {
       }
     ]
   }
-' 2>&1)
-
-if [ $? -ne 0 ]; then
+' 2>&1); then
   log_error "GraphQL query failed: $COMMENTS_JSON"
   echo "[]"
   exit 1
@@ -272,6 +274,15 @@ if [ "$OUTPUT_SIZE" -gt 25000 ]; then
   echo "$THREADS_JSON" > "$TEMP_FILE"
   log_verbose "Output $OUTPUT_SIZE bytes exceeds 25KB, wrote to: $TEMP_FILE"
   echo "[get-pr-comments] Large output detected — wrote to temp file for Claude to read: $TEMP_FILE" >&2
+  if [ "$PATH_ONLY_ON_LARGE" -eq 1 ]; then
+    jq -n \
+      --arg output_file "$TEMP_FILE" \
+      --argjson bytes "$OUTPUT_SIZE" \
+      --argjson threads "$TOTAL_THREADS" \
+      --argjson comments "$TOTAL_COMMENTS" \
+      '{output_file: $output_file, bytes: $bytes, thread_count: $threads, comment_count: $comments}'
+    exit 0
+  fi
 fi
 
 echo "$THREADS_JSON"

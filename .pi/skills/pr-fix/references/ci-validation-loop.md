@@ -13,25 +13,27 @@ After the push from Step 7, wait for CI to start and complete using the backgrou
 **NEVER poll CI with inline `sleep` loops or `sleep N && gh pr checks`.** The script below is the ONLY permitted method — it checks immediately on first poll and consumes zero tokens while waiting.
 
 ```bash
-./scripts/poll-ci.sh {number}
+./scripts/poll-ci.sh {number} 30 40 0
 ```
 
 **MUST run with `run_in_background: true`.** The script automatically filters out approval-gated checks (merge gate, peer review, manual approval, codeowner, devflow/mergegate) and polls every 30 seconds for up to 20 minutes.
+The final `0` keeps unchanged progress quiet; pass a positive `log-every` only when the user asked for live progress.
 
 ### Handle the script's exit state
 
 | State | Action |
 |-------|--------|
 | `ALL_PASSING` | Skip to Phase 5 (report success) |
-| `FAILURES_DETECTED` | Parse the `FULL_STATUS` JSON from the output. Continue to Phase 2. |
+| `FAILURES_DETECTED` | Read `STATUS_FILE` from the output. Continue to Phase 2. |
 | `CONFLICTS_DETECTED` | PR has merge conflicts from base branch movement. Invoke `/fix-conflicts`, push the resolution, then restart the poller. |
 | `TIMEOUT` | Use the `LAST_SUMMARY` and `PENDING_CHECKS` output to report the current state. Do not keep foreground polling. |
 
-**On `FAILURES_DETECTED`:** the script output includes the full status JSON with `name`, `state`, `bucket`, and `link` for each check. Use this directly — no follow-up API call needed.
+**On `FAILURES_DETECTED`:** the script writes the full compact check table to `STATUS_FILE`.
+Read that file; do not call `gh pr checks` again unless the file is missing or malformed.
 
 ## Phase 2: Identify Failures
 
-Use the `FULL_STATUS` JSON from Phase 1. Only refetch if that output is missing or malformed:
+Use the `STATUS_FILE` JSON from Phase 1. Only refetch if that file is missing or malformed:
 
 ```bash
 gh pr checks {number} --json name,state,bucket,link
@@ -57,6 +59,7 @@ Parse into a structured list of failed checks, excluding approval-gated checks (
 2. List failed jobs:
 
 ```bash
+command -v get_ddci_logs.sh
 get_ddci_logs.sh --list-failed {request_id}
 ```
 
@@ -68,7 +71,9 @@ Output is tab-separated: `job_id`, `job_name`, `status`, `failure_reason`.
 get_ddci_logs.sh {job_id} {request_id} --summary
 ```
 
-**If `get_ddci_logs.sh` is not available:** fall back to the `/dd:fetch-ci-results` skill if installed, or report the Mosaic URL to the user and ask them to investigate manually.
+**If `get_ddci_logs.sh` is not available:** do not run extra CI status commands.
+Report the failed check name and Mosaic URL from `STATUS_FILE`.
+Without logs, classify the failure as not auto-fixable unless the check name alone identifies a changed file and exact fix.
 
 ### GitHub Actions Failures
 

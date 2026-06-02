@@ -63,9 +63,6 @@ Opt-out flags compose freely: `--no-bot-reviews --no-ci` runs only comment addre
 | `--auto` | Skip interactive prompts for bot reviews and CI. Human review threads still prompt. |
 | `--auto-human` | Implies `--auto`. Also skips prompts for human review threads. Defaults: "Fix all" for non-disagreements, "Explain and keep" for disagreements. |
 
-Examples: `--auto --no-ci` = address comments interactively + auto bot review loop, no CI.
-`--auto-human --no-bot-reviews` = fully autonomous comment addressing + CI loop, no bot reviews.
-
 Run in parallel:
 
 - `gh auth status 2>&1`
@@ -113,32 +110,20 @@ If `--no-comments` is set and all of Step 8 is also skipped, inform the user tha
 
 **If `--no-comments` is set:** skip to Step 8.
 
-Fetch actionable review threads using the `get-pr-comments.sh` script. The script handles GraphQL pagination, structured output, and large-output fallback automatically.
+Fetch actionable review threads using `get-pr-comments.sh`.
+Use `-p` so large outputs return a small pointer instead of dumping every comment into context.
 
 ```bash
-./get-pr-comments.sh -a {number}
+./get-pr-comments.sh -a -p {number}
 ```
 
-For comment URLs, pass the full URL instead of the PR number:
+For comment URLs, pass the full URL in place of `{number}`.
 
-```bash
-./get-pr-comments.sh -a "https://github.com/org/repo/pull/42#discussion_r123"
-```
+**If stdout is an object with `output_file`:** read that path and use its JSON array as `THREADS`.
+Do not re-run the script without `-p`; that would print the same large payload.
 
-**If output exceeds 25KB:** the script writes to `/tmp/pr-comments-{owner}-{repo}-{pr}.json` and prints a message to stderr. Use the Read tool to load the data from that path.
-
-The script returns a JSON array of threads. Each thread contains:
-
-| Field | Usage |
-|-------|-------|
-| `thread_id` | GraphQL node ID — pass to `resolveReviewThread` mutation |
-| `first_comment_id` | REST API comment ID — pass to reply endpoint |
-| `resolved` | Always `false` when using `-a` flag |
-| `outdated` | Always `false` when using `-a` flag |
-| `path` | File path relative to repo root |
-| `line` | End line number in the diff |
-| `start_line` | Start line for multi-line comments (null = single line) |
-| `comments[]` | Array of `{ comment_id, body, author, outdated, path, line, html_url }` |
+The script returns a JSON array of threads.
+Use `thread_id`, `first_comment_id`, `path`, `line`, `start_line`, and `comments[]` for edits, replies, and resolution.
 
 **If `--reviewer` specified:** filter the output:
 
@@ -262,9 +247,17 @@ For threads requiring explanations:
 ## Step 6: Reply and Resolve Threads
 
 For each addressed human review thread, reply directly to the review comment and resolve the thread.
-Use the three-tier reply flow in [references/graphql-queries.md](references/graphql-queries.md):
-GraphQL thread reply, REST threaded reply, then top-level PR comment fallback.
+Prefer the helper script; it tries GraphQL thread reply, REST threaded reply, then top-level PR comment fallback.
 Track threads that used the Tier 3 fallback; report them in Step 9.
+
+```bash
+printf '%s\n' "{response text}" \
+  | ./scripts/reply-review-thread.sh \
+      --thread-id "{thread_id}" --first-comment-id "{first_comment_id}" --repo "{owner}/{repo}" --pr "{number}" \
+      --path "{path}" --line "{line}" --url "{html_url}" --author "{author}"
+```
+
+If the helper fails, then load [references/graphql-queries.md](references/graphql-queries.md) and use the manual tiered flow.
 
 Response format by category:
 
@@ -281,9 +274,8 @@ Response format by category:
 Prefix replies with `*Automated response from {agent}:*`, where `{agent}` is the current agent name or `pr-fix`.
 Do not resolve automated reviewer threads.
 
-**Resolve** the thread using the GraphQL mutation from [references/graphql-queries.md](references/graphql-queries.md), passing the thread's `thread_id`.
-Attempt resolution regardless of which reply tier was used — `thread_id` is independent of `first_comment_id`.
-If `thread_id` is also missing (REST fallback data from error handling), skip resolution and note as "replied but not resolved" in Step 9.
+The helper resolves the thread unless `--no-resolve` is passed.
+If `thread_id` is missing, skip resolution and note as "replied but not resolved" in Step 9.
 
 **Do NOT resolve:**
 - Threads where the user chose "Discuss further"
@@ -292,14 +284,20 @@ If `thread_id` is also missing (REST fallback data from error handling), skip re
 
 ## Step 7: Commit and Push
 
-Group changes into logical commits. Strategy:
+Group changes into logical commits.
+Use one commit for one concern, even when it spans multiple files.
+Use separate commits for unrelated concerns.
 
-| Scenario | Commits |
-|----------|---------|
-| All changes in 1-2 files | Single commit |
-| Changes span 3+ files, all related | Single commit |
-| Changes span multiple unrelated concerns | One commit per concern |
-| Mix of suggestions and code changes | Group by concern, not by category |
+Before committing, run independent local validations in parallel.
+Choose checks from the changed file types and repo guidance, for example:
+
+```bash
+git diff --check              # whitespace and conflict markers
+bash -n {changed-shell-files} # shell syntax
+```
+
+Do not serialize independent syntax, formatting, and lightweight test checks.
+If a validation cannot run locally, record the reason for Step 9.
 
 Commit message format — follow the repo's convention detected from `git log --oneline -5`. If the repo uses conventional commits:
 
@@ -328,6 +326,7 @@ Do not write a final summary until all enabled waiters and any fix loops have co
 
 **POLLING RULE — NEVER use inline `sleep` loops, `sleep N && gh pr checks`, or any foreground sleep-based polling.**
 All CI and review waiting MUST use the background scripts below with `run_in_background: true` or the equivalent parallel exec/session mechanism.
+Pass `0` as `log-every` unless the user asked for live progress; quiet waiters return only actionable state changes and final output.
 Scripts check immediately on first poll (zero delay), so results already ready return instantly.
 
 ### 8a: Trigger Automated Reviews (if stale)
@@ -402,14 +401,15 @@ AskUserQuestion(
 
 ```bash
 # MUST use run_in_background: true — NEVER sleep in foreground
-./scripts/poll-ci.sh {number}
+./scripts/poll-ci.sh {number} 30 40 0
 ```
 
 Handle the exit state per [references/ci-validation-loop.md](references/ci-validation-loop.md) Phase 1.
 "Yes — watch and fix": on `FAILURES_DETECTED`, follow Phases 2-4 (analyze, fix, loop — max 3 iterations).
 "Just watch": report results from script output. No fixes applied.
 
-If the review waiter is also enabled, keep both waiters running independently and process whichever returns an actionable state first.
+If the review waiter is also enabled, launch it in the same parallel tool call/session group.
+Keep both waiters running independently and process whichever returns an actionable state first.
 After pushing a fix from either loop, the other waiter's result is stale; restart all enabled waiters from the new head.
 
 ### 8c: Process Automated Review Feedback
@@ -420,7 +420,7 @@ You MUST poll for bot responses — do NOT assume they are already complete. Sta
 
 ```bash
 # MUST use run_in_background: true — NEVER sleep in foreground
-./scripts/poll-reviews.sh {number} {owner}/{repo} "$REVIEW_BASELINE_COMMENTS" "$REVIEW_BASELINE_REVIEWS" "$BOT_PATTERN"
+./scripts/poll-reviews.sh {number} {owner}/{repo} "$REVIEW_BASELINE_COMMENTS" "$REVIEW_BASELINE_REVIEWS" "$BOT_PATTERN" 30 30 0
 ```
 
 Handle the exit state per [references/automated-review-loop.md](references/automated-review-loop.md) Phase 2.

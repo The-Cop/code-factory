@@ -29,10 +29,11 @@ COMMENT_COUNT=$(gh api "repos/{owner}/{repo}/pulls/{number}/comments" --paginate
 REVIEW_COUNT=$(gh api "repos/{owner}/{repo}/pulls/{number}/reviews" --paginate 2>/dev/null | jq -s --arg bp "$BOT_PATTERN" 'add | [.[] | select((.user.login // "") | test($bp; "i")) | select(.state != "COMMENTED")] | length')
 
 # Run background poller — pass a bot pattern regex matching your automated reviewers
-./scripts/poll-reviews.sh {number} {owner}/{repo} "$COMMENT_COUNT" "$REVIEW_COUNT" "$BOT_PATTERN"
+./scripts/poll-reviews.sh {number} {owner}/{repo} "$COMMENT_COUNT" "$REVIEW_COUNT" "$BOT_PATTERN" 30 30 0
 ```
 
 **MUST run with `run_in_background: true`.** The `{bot-pattern}` parameter is a regex matching bot reviewer login names (e.g., `"codex|mybot|app"`). Default: `"bot|app|\[bot\]"`.
+The final `0` keeps unchanged progress quiet; pass a positive `log-every` only when the user asked for live progress.
 
 The script handles `:eyes:` emoji detection automatically — it waits until the emoji clears from PR comments and body before checking for new feedback. Polls every 30 seconds for up to 15 minutes.
 
@@ -40,15 +41,16 @@ The script handles `:eyes:` emoji detection automatically — it waits until the
 
 | State | Action |
 |-------|--------|
-| `REVIEWS_READY` | New review comments or reviews detected. Parse the compact JSON output included in script output. Continue to Phase 3. |
+| `REVIEWS_READY` | New review comments or reviews detected. Read `NEW_COMMENTS_FILE` or `NEW_REVIEWS_FILE`. Continue to Phase 3. |
 | `NO_NEW_REVIEWS` | No bot activity after 15 minutes — reviewer may not be configured. Skip for the rest of the loop. |
 | `TIMEOUT` | `:eyes:` was active but never completed. Report to user. |
 
-**On `REVIEWS_READY`:** the script output includes only the new bot comments/reviews since the baseline. Use this directly — no follow-up API call needed.
+**On `REVIEWS_READY`:** the script writes only the new bot comments/reviews since the baseline to the printed file path.
+Read that file; do not fetch the full PR comment history.
 
 ## Phase 3: Read Review Comments
 
-Use the `NEW_COMMENTS` or `NEW_REVIEWS` JSON from Phase 2. Do not fetch the full PR comment history.
+Use the JSON file from Phase 2. Do not fetch the full PR comment history.
 
 If the poller output is missing or truncated, fetch only compact root comments from bot reviewers:
 

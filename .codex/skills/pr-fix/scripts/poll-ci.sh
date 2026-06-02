@@ -3,12 +3,13 @@
 # Run with run_in_background: true to avoid consuming tokens while waiting.
 #
 # Usage: poll-ci.sh <pr-number> [poll-interval] [max-polls] [log-every]
+#   log-every defaults to 0: print only state changes and final actionable output.
 #
 # Exit states (printed to stdout):
 #   ALL_PASSING         All non-gated checks passed and PR is mergeable
-#   FAILURES_DETECTED   At least one non-gated check failed (full status JSON follows)
+#   FAILURES_DETECTED   At least one non-gated check failed (status JSON file path follows)
 #   CONFLICTS_DETECTED  All checks passed but PR has merge conflicts
-#   TIMEOUT             Max polls reached without resolution
+#   TIMEOUT             Max polls reached without resolution (status JSON file path follows)
 #
 # Approval-gated checks (require human action, excluded from wait/fail logic):
 #   merge gate, peer review, manual approval, codeowner, devflow/mergegate
@@ -18,14 +19,14 @@ set -euo pipefail
 PR_NUMBER="${1:?Usage: poll-ci.sh <pr-number> [poll-interval] [max-polls]}"
 POLL_INTERVAL="${2:-30}"
 MAX_POLLS="${3:-40}"
-LOG_EVERY="${4:-5}"
+LOG_EVERY="${4:-0}"
 
 # Case-insensitive patterns for checks that require human approval.
 # These are excluded from pending/failure counts — they never auto-complete.
 GATED_PATTERN="merge.gate|peer.review|manual.approval|codeowner|devflow/mergegate"
 
-if ! [[ "$LOG_EVERY" =~ ^[0-9]+$ ]] || [ "$LOG_EVERY" -lt 1 ]; then
-  LOG_EVERY=5
+if ! [[ "$LOG_EVERY" =~ ^[0-9]+$ ]]; then
+  LOG_EVERY=0
 fi
 
 filter_gated() {
@@ -34,7 +35,15 @@ filter_gated() {
 
 should_log() {
   local poll="$1"
+  [ "$LOG_EVERY" -gt 0 ] || return 1
   [ "$poll" -eq 1 ] || [ "$poll" -eq "$MAX_POLLS" ] || [ $((poll % LOG_EVERY)) -eq 0 ]
+}
+
+write_status_file() {
+  local state="$1"
+  local file="/tmp/pr-fix-ci-${PR_NUMBER}-${state}.json"
+  echo "$LAST_FILTERED" > "$file"
+  echo "$file"
 }
 
 LAST_COUNTS=""
@@ -60,12 +69,13 @@ for i in $(seq 1 "$MAX_POLLS"); do
   COUNTS="passed=$PASSED pending=$PENDING failed=$FAILED total=$TOTAL"
   LAST_FILTERED="$FILTERED"
 
-  if [ "$COUNTS" != "$LAST_COUNTS" ] || should_log "$i"; then
+  if { [ -n "$LAST_COUNTS" ] && [ "$COUNTS" != "$LAST_COUNTS" ]; } || should_log "$i"; then
     echo "poll $i/$MAX_POLLS: $COUNTS"
   fi
   LAST_COUNTS="$COUNTS"
 
   if [ "$FAILED" -gt 0 ]; then
+    STATUS_FILE=$(write_status_file "failures")
     echo ""
     echo "FAILURES_DETECTED"
     echo "failed=$FAILED pending=$PENDING passed=$PASSED total=$TOTAL"
@@ -73,8 +83,7 @@ for i in $(seq 1 "$MAX_POLLS"); do
     echo "Failed checks:"
     echo "$FILTERED" | jq -r '.[] | select(.state == "FAILURE") | "  \(.name) — \(.link)"'
     echo ""
-    echo "FULL_STATUS:"
-    echo "$FILTERED"
+    echo "STATUS_FILE: $STATUS_FILE"
     exit 0
   fi
 
@@ -100,6 +109,9 @@ echo ""
 echo "TIMEOUT"
 echo "Polled $MAX_POLLS times at ${POLL_INTERVAL}s intervals ($((MAX_POLLS * POLL_INTERVAL / 60)) min)"
 echo "LAST_SUMMARY: $LAST_COUNTS"
+echo ""
+STATUS_FILE=$(write_status_file "timeout")
+echo "STATUS_FILE: $STATUS_FILE"
 echo ""
 echo "PENDING_CHECKS:"
 echo "$LAST_FILTERED" | jq '[.[] | select(.state == "PENDING" or .state == "IN_PROGRESS" or .state == "QUEUED")]'
