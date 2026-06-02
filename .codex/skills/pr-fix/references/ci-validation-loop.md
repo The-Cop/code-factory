@@ -25,13 +25,13 @@ ${CLAUDE_PLUGIN_ROOT}/skills/pr-fix/scripts/poll-ci.sh {number}
 | `ALL_PASSING` | Skip to Phase 5 (report success) |
 | `FAILURES_DETECTED` | Parse the `FULL_STATUS` JSON from the output. Continue to Phase 2. |
 | `CONFLICTS_DETECTED` | PR has merge conflicts from base branch movement. Invoke `/fix-conflicts`, push the resolution, then restart the poller. |
-| `TIMEOUT` | Report to the user that CI hasn't completed in 20 minutes. Ask how to proceed. |
+| `TIMEOUT` | Use the `LAST_SUMMARY` and `PENDING_CHECKS` output to report the current state. Do not keep foreground polling. |
 
 **On `FAILURES_DETECTED`:** the script output includes the full status JSON with `name`, `state`, `bucket`, and `link` for each check. Use this directly — no follow-up API call needed.
 
 ## Phase 2: Identify Failures
 
-Fetch the full check results:
+Use the `FULL_STATUS` JSON from Phase 1. Only refetch if that output is missing or malformed:
 
 ```bash
 gh pr checks {number} --json name,state,bucket,link
@@ -107,7 +107,7 @@ Classify each failure before deciding the fix strategy:
 
 ### Re-run Flaky Jobs
 
-For failures classified as P3 (flaky/infra), re-run without fixing code:
+For failures classified as P5 (flaky/infra), re-run without fixing code:
 
 **GitHub Actions:**
 
@@ -246,7 +246,7 @@ All CI checks passing after {N} iteration(s).
 | Error | Action |
 |-------|--------|
 | `gh pr checks` fails | Verify PR number. Check `gh auth status`. Report error. |
-| `--watch` hangs beyond 20 min | Kill and fall back to polling. Report timeout. |
+| Poller timeout | Report `LAST_SUMMARY` and pending checks. Ask how to proceed unless another parallel waiter still has actionable work. |
 | `get_ddci_logs.sh` not found | Skip DDCI log analysis. Report the Mosaic URL for manual investigation. |
 | Log output exceeds context | Truncate to last 100 lines. Focus on the first error in the output. |
 | Push fails after fix | Report error. Do NOT force-push. Let user decide. |

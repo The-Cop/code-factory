@@ -252,69 +252,25 @@ For threads requiring explanations:
 
 ## Step 6: Reply and Resolve Threads
 
-For each addressed thread, reply directly to the review comment and resolve the thread.
-
-**Reply** with a three-tier approach. See [references/graphql-queries.md](references/graphql-queries.md) for full syntax.
-
-**Tier 1 — GraphQL thread reply** (preferred).
-Use the `addPullRequestReviewThreadReply` mutation with the thread's `thread_id`.
-This is preferred because the REST reply endpoint returns 404 on some repositories.
-Escape double quotes and newlines in the body since it's embedded in a GraphQL string.
-
-```bash
-ESCAPED_BODY=$(echo "$BODY" | sed 's/\\/\\\\/g; s/"/\\"/g' | sed ':a;N;$!ba;s/\n/\\n/g')
-gh api graphql -f query="
-mutation {
-  addPullRequestReviewThreadReply(input: {
-    pullRequestReviewThreadId: \"${THREAD_ID}\"
-    body: \"${ESCAPED_BODY}\"
-  }) {
-    comment { id }
-  }
-}
-"
-```
-
-**Tier 2 — REST threaded reply.**
-If Tier 1 fails (e.g., thread already resolved before reply), try the REST endpoint.
-Skip this tier if `first_comment_id` is `0`, `null`, or missing.
-
-```bash
-gh api repos/{owner}/{repo}/pulls/comments/{first_comment_id}/replies \
-  -X POST -f body="$(cat <<'EOF'
-{response text}
-EOF
-)"
-```
-
-**Tier 3 — PR comment fallback.**
-If both Tier 1 and Tier 2 fail,
-post a top-level PR comment that references the original thread.
-Build the reference from `comments[0].html_url`, `path`, `line`, and `comments[0].author`:
-
-```bash
-gh pr comment {number} --body "$(cat <<'EOF'
-Re: [{path}:{line}]({html_url}) (@{author})
-
-{response text}
-EOF
-)"
-```
-
-Track threads that used the Tier 3 fallback — they are reported in Step 9.
+For each addressed human review thread, reply directly to the review comment and resolve the thread.
+Use the three-tier reply flow in [references/graphql-queries.md](references/graphql-queries.md):
+GraphQL thread reply, REST threaded reply, then top-level PR comment fallback.
+Track threads that used the Tier 3 fallback; report them in Step 9.
 
 Response format by category:
 
 | Category | Format |
 |----------|--------|
-| Suggestion applied | `Done — applied the suggestion.` |
-| Code change | `Fixed — {brief description of what changed}.` |
+| Suggestion applied | `Done - applied the suggestion.` |
+| Code change | `Fixed - {brief description of what changed}.` |
 | Explanation | `{technical explanation with reasoning}` |
-| Disagreement (fix) | `Agreed — {brief description of the fix}.` |
+| Disagreement (fix) | `Agreed - {brief description of the fix}.` |
 | Disagreement (keep) | `{explanation of reasoning}. Let me know if you'd like to discuss further.` |
 | Outdated (addressed) | `This has been addressed in a subsequent update.` |
 
-**Bot attribution:** When replying to automated reviewer comments (Codex, etc.), prefix every reply with `*Automated response from Claude:*` to distinguish from human responses.
+**Automated reviewer comments:** follow [references/automated-review-loop.md](references/automated-review-loop.md) Phase 6.
+Prefix replies with `*Automated response from {agent}:*`, where `{agent}` is the current agent name or `pr-fix`.
+Do not resolve automated reviewer threads.
 
 **Resolve** the thread using the GraphQL mutation from [references/graphql-queries.md](references/graphql-queries.md), passing the thread's `thread_id`.
 Attempt resolution regardless of which reply tier was used — `thread_id` is independent of `first_comment_id`.
@@ -323,6 +279,7 @@ If `thread_id` is also missing (REST fallback data from error handling), skip re
 **Do NOT resolve:**
 - Threads where the user chose "Discuss further"
 - Threads where the reply is a question back to the reviewer
+- Threads from automated reviewers
 
 ## Step 7: Commit and Push
 
@@ -356,10 +313,12 @@ git push
 
 **If both `--no-bot-reviews` and `--no-ci` are set:** skip this step entirely. Proceed to Step 9.
 
-Run enabled substeps in order. Do NOT combine into a single question or write a summary until ALL have completed.
+Run enabled validation waiters in parallel after any automated review trigger.
+Do not wait for CI before polling reviews; both waiters are read-only until they report an actionable state.
+Do not write a final summary until all enabled waiters and any fix loops have completed.
 
 **POLLING RULE — NEVER use inline `sleep` loops, `sleep N && gh pr checks`, or any foreground sleep-based polling.**
-All CI and review waiting MUST use the background scripts below with `run_in_background: true`.
+All CI and review waiting MUST use the background scripts below with `run_in_background: true` or the equivalent parallel exec/session mechanism.
 Scripts check immediately on first poll (zero delay), so results already ready return instantly.
 
 ### 8a: Trigger Automated Reviews (if stale)
@@ -390,14 +349,25 @@ ask_question(
   header: "Re-trigger automated reviews?",
   question: "There are new commits since the last Codex reviews. Re-trigger them?",
   options: [
-    "Yes — review and fix" — Trigger reviewers, fix actionable feedback after CI (max 3 iterations),
+    "Yes — review and fix" — Trigger reviewers, fix actionable feedback from the review poller (max 3 iterations),
     "Just trigger" — Post review comments but do not auto-fix,
     "No" — Skip automated reviews
   ]
 )
 </interaction>
 
-If triggering: post `@codex` per [references/automated-review-loop.md](references/automated-review-loop.md) Phase 1. Do NOT wait — 8c will poll later. **Proceed to 8b.**
+If triggering, first capture the review baseline and carry it into 8c:
+
+```bash
+BOT_PATTERN="codex"
+REVIEW_BASELINE_COMMENTS=$(gh api "repos/{owner}/{repo}/pulls/{number}/comments" --paginate 2>/dev/null | jq -s --arg bp "$BOT_PATTERN" 'add | [.[] | select((.user.login // "") | test($bp; "i")) | select((.in_reply_to_id // null) == null) | select(.path != null)] | length')
+REVIEW_BASELINE_REVIEWS=$(gh api "repos/{owner}/{repo}/pulls/{number}/reviews" --paginate 2>/dev/null | jq -s --arg bp "$BOT_PATTERN" 'add | [.[] | select((.user.login // "") | test($bp; "i")) | select(.state != "COMMENTED")] | length')
+```
+
+Never capture this baseline after waiting for CI; comments posted during that wait would be missed.
+
+Then post `@codex` per [references/automated-review-loop.md](references/automated-review-loop.md) Phase 1.
+Do not wait here; 8c starts the review poller. **Proceed to 8b.**
 
 ### 8b: CI Validation Loop
 
@@ -419,7 +389,7 @@ ask_question(
 )
 </interaction>
 
-**If "No":** skip to 8c. Otherwise, start the CI poller in the background:
+**If "No":** skip the CI waiter. Otherwise, start the CI poller in the background:
 
 ```bash
 # MUST use run_in_background: true — NEVER sleep in foreground
@@ -430,7 +400,8 @@ Handle the exit state per [references/ci-validation-loop.md](references/ci-valid
 "Yes — watch and fix": on `FAILURES_DETECTED`, follow Phases 2-4 (analyze, fix, loop — max 3 iterations).
 "Just watch": report results from script output. No fixes applied.
 
-**After 8b completes → proceed to 8c if reviews were triggered in 8a.**
+If the review waiter is also enabled, keep both waiters running independently and process whichever returns an actionable state first.
+After pushing a fix from either loop, the other waiter's result is stale; restart all enabled waiters from the new head.
 
 ### 8c: Process Automated Review Feedback
 
@@ -440,9 +411,7 @@ You MUST poll for bot responses — do NOT assume they are already complete. Sta
 
 ```bash
 # MUST use run_in_background: true — NEVER sleep in foreground
-COMMENT_COUNT=$(gh api "repos/{owner}/{repo}/pulls/{number}/comments" --paginate 2>/dev/null | jq -s 'add | length')
-REVIEW_COUNT=$(gh api "repos/{owner}/{repo}/pulls/{number}/reviews" --paginate 2>/dev/null | jq -s 'add | [.[] | select(.state != "COMMENTED")] | length')
-./scripts/poll-reviews.sh {number} {owner}/{repo} "$COMMENT_COUNT" "$REVIEW_COUNT" "codex"
+./scripts/poll-reviews.sh {number} {owner}/{repo} "$REVIEW_BASELINE_COMMENTS" "$REVIEW_BASELINE_REVIEWS" "$BOT_PATTERN"
 ```
 
 Handle the exit state per [references/automated-review-loop.md](references/automated-review-loop.md) Phase 2.

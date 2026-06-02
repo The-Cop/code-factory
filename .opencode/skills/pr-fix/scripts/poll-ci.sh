@@ -2,7 +2,7 @@
 # Background CI poller — blocks until an actionable state change occurs.
 # Run with run_in_background: true to avoid consuming tokens while waiting.
 #
-# Usage: poll-ci.sh <pr-number> [poll-interval] [max-polls]
+# Usage: poll-ci.sh <pr-number> [poll-interval] [max-polls] [log-every]
 #
 # Exit states (printed to stdout):
 #   ALL_PASSING         All non-gated checks passed and PR is mergeable
@@ -18,14 +18,27 @@ set -euo pipefail
 PR_NUMBER="${1:?Usage: poll-ci.sh <pr-number> [poll-interval] [max-polls]}"
 POLL_INTERVAL="${2:-30}"
 MAX_POLLS="${3:-40}"
+LOG_EVERY="${4:-5}"
 
 # Case-insensitive patterns for checks that require human approval.
 # These are excluded from pending/failure counts — they never auto-complete.
 GATED_PATTERN="merge.gate|peer.review|manual.approval|codeowner|devflow/mergegate"
 
+if ! [[ "$LOG_EVERY" =~ ^[0-9]+$ ]] || [ "$LOG_EVERY" -lt 1 ]; then
+  LOG_EVERY=5
+fi
+
 filter_gated() {
   jq --arg pattern "$GATED_PATTERN" '[.[] | select((.name | ascii_downcase | test($pattern)) | not)]'
 }
+
+should_log() {
+  local poll="$1"
+  [ "$poll" -eq 1 ] || [ "$poll" -eq "$MAX_POLLS" ] || [ $((poll % LOG_EVERY)) -eq 0 ]
+}
+
+LAST_COUNTS=""
+LAST_FILTERED="[]"
 
 for i in $(seq 1 "$MAX_POLLS"); do
   # gh pr checks exits 8 when checks are pending — capture output regardless
@@ -44,8 +57,13 @@ for i in $(seq 1 "$MAX_POLLS"); do
   PENDING=$(echo "$FILTERED" | jq '[.[] | select(.state == "PENDING" or .state == "IN_PROGRESS" or .state == "QUEUED")] | length')
   TOTAL=$(echo "$FILTERED" | jq 'length')
   PASSED=$((TOTAL - FAILED - PENDING))
+  COUNTS="passed=$PASSED pending=$PENDING failed=$FAILED total=$TOTAL"
+  LAST_FILTERED="$FILTERED"
 
-  echo "poll $i/$MAX_POLLS: passed=$PASSED pending=$PENDING failed=$FAILED total=$TOTAL"
+  if [ "$COUNTS" != "$LAST_COUNTS" ] || should_log "$i"; then
+    echo "poll $i/$MAX_POLLS: $COUNTS"
+  fi
+  LAST_COUNTS="$COUNTS"
 
   if [ "$FAILED" -gt 0 ]; then
     echo ""
@@ -81,4 +99,8 @@ done
 echo ""
 echo "TIMEOUT"
 echo "Polled $MAX_POLLS times at ${POLL_INTERVAL}s intervals ($((MAX_POLLS * POLL_INTERVAL / 60)) min)"
+echo "LAST_SUMMARY: $LAST_COUNTS"
+echo ""
+echo "PENDING_CHECKS:"
+echo "$LAST_FILTERED" | jq '[.[] | select(.state == "PENDING" or .state == "IN_PROGRESS" or .state == "QUEUED")]'
 exit 1
