@@ -4,6 +4,9 @@ model_reasoning_effort = "xhigh"
 
 # Default-allow Codex execution posture managed by code-factory.
 approval_policy = "never"
+[sandbox]
+enabled = false
+allowUnsandboxedCommands = true
 # [sandbox_workspace_write]
 # network_access = true
 # writable_roots = [
