@@ -242,11 +242,51 @@ log_verbose "Retrieved $TOTAL_THREADS threads with $TOTAL_COMMENTS comments"
 if [ -n "$SPECIFIC_COMMENT_ID" ]; then
   log_verbose "Filtering to thread containing comment #$SPECIFIC_COMMENT_ID"
   THREADS_JSON=$(echo "$THREADS_JSON" | jq --arg cid "$SPECIFIC_COMMENT_ID" \
-    'map(select(.comments[] | .comment_id == ($cid | tonumber)))')
+    '
+      ($cid | tonumber) as $comment_id
+      | map(
+          select(.comments[] | .comment_id == $comment_id)
+          | (.comments[] | select(.comment_id == $comment_id)) as $comment
+          | .path = (.path // $comment.path)
+          | .line = (.line // $comment.line // $comment.original_line)
+          | .start_line = (.start_line // $comment.start_line // $comment.original_start_line)
+        )
+    ')
   FILTERED=$(echo "$THREADS_JSON" | jq 'length')
   log_verbose "Matched $FILTERED threads"
   if [ "$FILTERED" -eq 0 ]; then
-    log_error "Comment #$SPECIFIC_COMMENT_ID not found in PR #$PR_NUMBER"
+    log_verbose "Comment #$SPECIFIC_COMMENT_ID not found in GraphQL threads; trying REST fallback"
+    if ! THREADS_JSON=$(gh api "repos/${OWNER}/${REPO_NAME}/pulls/comments/${SPECIFIC_COMMENT_ID}" --jq '
+      [{
+        thread_id: null,
+        first_comment_id: .id,
+        resolved: false,
+        outdated: (.outdated // false),
+        path,
+        line: (.line // .original_line),
+        start_line: (.start_line // .original_start_line),
+        comments: [{
+          comment_id: .id,
+          author: .user.login,
+          body,
+          path,
+          line: (.line // .original_line),
+          original_line,
+          start_line: (.start_line // .original_start_line),
+          original_start_line,
+          diff_hunk,
+          outdated: (.outdated // false),
+          created_at,
+          updated_at,
+          commit_id,
+          in_reply_to_id,
+          html_url
+        }]
+      }]
+    ' 2>/dev/null); then
+      log_error "Comment #$SPECIFIC_COMMENT_ID not found in PR #$PR_NUMBER"
+      THREADS_JSON="[]"
+    fi
   fi
 fi
 
@@ -267,9 +307,13 @@ fi
 
 # Filter to actionable threads (unresolved + not outdated)
 if [ "$ACTIONABLE_ONLY" -eq 1 ]; then
-  THREADS_JSON=$(echo "$THREADS_JSON" | jq '[.[] | select(.resolved == false and .outdated == false)]')
-  ACTIONABLE=$(echo "$THREADS_JSON" | jq 'length')
-  log_verbose "Filtered to $ACTIONABLE actionable threads"
+  if [ -n "$SPECIFIC_COMMENT_ID" ]; then
+    log_verbose "Exact comment requested; keeping matched thread even if resolved or outdated"
+  else
+    THREADS_JSON=$(echo "$THREADS_JSON" | jq '[.[] | select(.resolved == false and .outdated == false)]')
+    ACTIONABLE=$(echo "$THREADS_JSON" | jq 'length')
+    log_verbose "Filtered to $ACTIONABLE actionable threads"
+  fi
 fi
 
 # Remove diff_hunk fields in compact mode (default)

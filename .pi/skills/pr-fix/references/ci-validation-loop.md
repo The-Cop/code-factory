@@ -26,7 +26,7 @@ For `DataDog/dd-source`, the poller waits for DDCI checks to register before acc
 |-------|--------|
 | `ALL_PASSING` | Skip to Phase 5 (report success) |
 | `FAILURES_DETECTED` | Read `STATUS_FILE` from the output. Continue to Phase 2. |
-| `CONFLICTS_DETECTED` | PR has merge conflicts from base branch movement. Invoke `/fix-conflicts`, push the resolution, then restart the poller. |
+| `CONFLICTS_DETECTED` | PR has merge conflicts from base branch movement. Use the `fix-conflicts` skill, push the resolution, then restart the poller. |
 | `TIMEOUT` | Use the `LAST_SUMMARY` and `PENDING_CHECKS` output to report the current state. Do not keep foreground polling. |
 
 **On `FAILURES_DETECTED`:** the script writes the full compact check table to `STATUS_FILE`.
@@ -198,7 +198,7 @@ If Bazel/Gazelle is blocked by local auth or credential-helper setup, use a scop
 1. Read the failing CI comment or log to identify the touched package.
 2. Run language-native metadata in that package only, using temp dirs under `/tmp` if needed:
    ```bash
-   TMPDIR=/tmp GOTMPDIR=/tmp GOCACHE=/tmp/go-cache go list -json {package_or_dir}
+   env TMPDIR=/tmp GOTMPDIR=/tmp GOCACHE=/tmp/go-cache go list -json {package_or_dir}
    ```
 3. Compare imports against direct `deps`/`test deps` in the nearby `BUILD.bazel`.
 4. Remove stale deps or add missing deps only when the mapping is unambiguous.

@@ -53,8 +53,8 @@ if [ -n "$THREAD_ID" ]; then
   fi
 fi
 
-if [ -z "$reply_tier" ] && [ -n "$REPO" ] && [ -n "$FIRST_COMMENT_ID" ] && [ "$FIRST_COMMENT_ID" != "0" ] && [ "$FIRST_COMMENT_ID" != "null" ]; then
-  if reply_error=$(gh api "repos/$REPO/pulls/comments/$FIRST_COMMENT_ID/replies" \
+if [ -z "$reply_tier" ] && [ -n "$REPO" ] && [ -n "$PR_NUMBER" ] && [ -n "$FIRST_COMMENT_ID" ] && [ "$FIRST_COMMENT_ID" != "0" ] && [ "$FIRST_COMMENT_ID" != "null" ]; then
+  if reply_error=$(gh api "repos/$REPO/pulls/$PR_NUMBER/comments/$FIRST_COMMENT_ID/replies" \
     -X POST -f body="$BODY" 2>&1 >/dev/null); then
     reply_tier="rest"
   fi

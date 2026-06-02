@@ -27,9 +27,10 @@ Record the current root bot review comment state before triggering, then use the
 BOT_PATTERN="{bot-pattern}"
 COMMENT_COUNT=$(gh api "repos/{owner}/{repo}/pulls/{number}/comments" --paginate 2>/dev/null | jq -s --arg bp "$BOT_PATTERN" 'add | [.[] | select((.user.login // "") | test($bp; "i")) | select((.in_reply_to_id // null) == null) | select(.path != null)] | length')
 REVIEW_COUNT=$(gh api "repos/{owner}/{repo}/pulls/{number}/reviews" --paginate 2>/dev/null | jq -s --arg bp "$BOT_PATTERN" 'add | [.[] | select((.user.login // "") | test($bp; "i")) | select(.state != "COMMENTED")] | length')
+ISSUE_COMMENT_COUNT=$(gh api "repos/{owner}/{repo}/issues/{number}/comments" --paginate 2>/dev/null | jq -s --arg bp "$BOT_PATTERN" 'add | [.[] | select((.user.login // "") | test($bp; "i"))] | length')
 
 # Run background poller — pass a bot pattern regex matching your automated reviewers
-${CLAUDE_PLUGIN_ROOT}/skills/pr-fix/scripts/poll-reviews.sh {number} {owner}/{repo} "$COMMENT_COUNT" "$REVIEW_COUNT" "$BOT_PATTERN" 30 30 0
+${CLAUDE_PLUGIN_ROOT}/skills/pr-fix/scripts/poll-reviews.sh {number} {owner}/{repo} "$COMMENT_COUNT" "$REVIEW_COUNT" "$BOT_PATTERN" 30 30 0 "$ISSUE_COMMENT_COUNT"
 ```
 
 **MUST run with `run_in_background: true`.** The `{bot-pattern}` parameter is a regex matching bot reviewer login names (e.g., `"codex|mybot|app"`). Default: `"bot|app|\[bot\]"`.
@@ -41,16 +42,21 @@ The script handles `:eyes:` emoji detection automatically — it waits until the
 
 | State | Action |
 |-------|--------|
-| `REVIEWS_READY` | New review comments or reviews detected. Read `NEW_COMMENTS_FILE` or `NEW_REVIEWS_FILE`. Continue to Phase 3. |
+| `REVIEWS_READY` | New review comments, submitted reviews, or non-clean top-level bot comments detected. Read the printed `NEW_*_FILE`. Continue to Phase 3. |
+| `REVIEWS_CLEAN` | Clean top-level bot comment or completed `:eyes:` with no file comments. Read `NEW_ISSUE_COMMENTS_FILE` if present; report clean review. |
 | `NO_NEW_REVIEWS` | No bot activity after 15 minutes — reviewer may not be configured. Skip for the rest of the loop. |
 | `TIMEOUT` | `:eyes:` was active but never completed. Report to user. |
 
-**On `REVIEWS_READY`:** the script writes only the new bot comments/reviews since the baseline to the printed file path.
+**On `REVIEWS_READY` or `REVIEWS_CLEAN`:** the script writes only new bot data since the baseline to the printed file path.
 Read that file; do not fetch the full PR comment history.
 
 ## Phase 3: Read Review Comments
 
 Use the JSON file from Phase 2. Do not fetch the full PR comment history.
+
+If Phase 2 printed `NEW_ISSUE_COMMENTS_FILE`, inspect the issue comment summary.
+If the state is `REVIEWS_CLEAN` and the summary says the reviewer found no major issues, record a clean automated review and skip to Phase 8.
+If the state is `REVIEWS_READY`, report direct questions or concrete requests as top-level automated comments for human follow-up.
 
 If the poller output is missing or truncated, fetch only compact root comments from bot reviewers:
 
@@ -116,7 +122,7 @@ git push
 For each processed comment, reply to the original review comment:
 
 ```bash
-gh api repos/{owner}/{repo}/pulls/comments/{comment_id}/replies \
+gh api repos/{owner}/{repo}/pulls/{number}/comments/{comment_id}/replies \
   -X POST -f body="$(cat <<'EOF'
 *Automated response from {agent}:*
 

@@ -11,8 +11,8 @@ Announce: "I'm using the pr-fix skill to address PR review feedback."
 
 | If you need... | Use instead |
 |----------------|-------------|
-| Review a PR and produce feedback | `/review` — read-only analysis with structured findings |
-| Address existing PR review comments | `/pr-fix` — you're here |
+| Review a PR and produce feedback | `review` skill — read-only analysis with structured findings |
+| Address existing PR review comments | `pr-fix` skill — you're here |
 | Fix CI failures not tied to review feedback | Use the CI validation loop directly (see references) |
 
 ## Step 1: Gather Context
@@ -81,7 +81,8 @@ git diff --name-only origin/{base}...HEAD
 
 Save the changed-files list — it is used throughout for CI failure classification (PR-related vs pre-existing) and pattern scanning in Step 5.
 
-**If `mergeable` is `CONFLICTING`:** resolve conflicts before proceeding. Invoke `/fix-conflicts`, then push the resolved merge commit. Re-fetch the changed-files list after resolution since the diff may have grown.
+**If `mergeable` is `CONFLICTING`:** resolve conflicts before proceeding.
+Use the `fix-conflicts` skill, push the resolved merge commit, then re-fetch changed files since the diff may have grown.
 
 ### Flag Routing
 
@@ -113,6 +114,7 @@ For a comment URL, pass it to `get-pr-comments.sh`; skip summaries only when the
 **If stdout is an object with `output_file`:** read that path; do not re-run without `-p`.
 
 `get-pr-comments.sh` returns `THREADS` with `thread_id`, `first_comment_id`, `path`, `line`, `start_line`, and `comments[]`.
+For `#discussion_r...` URLs that GraphQL misses, it falls back to REST and returns the same shape with `thread_id: null`; reply via REST/Tier 3 and report "replied but not resolved".
 `get-pr-review-summaries.sh` returns `REVIEWS`: top-level review bodies that do not create inline threads.
 
 **If `--reviewer` specified:** pass `-r "{reviewer}"` to both scripts.
@@ -322,6 +324,15 @@ Pass `0` as `log-every` unless the user asked for live progress; scripts check i
 
 **If `--no-bot-reviews` is set:** skip to 8b.
 
+Before triggering new bot reviews, audit unreplied automated root file comments:
+
+```bash
+./scripts/list-unreplied-bot-comments.sh {number} {owner}/{repo} codex
+```
+
+If non-empty, handle them first. In `--auto`, read only listed IDs, inspect current code, fix clear issues, and reply per
+[references/automated-review-loop.md](references/automated-review-loop.md) Phase 6.
+
 Check if new commits exist since the last codex comments:
 
 ```bash
@@ -359,6 +370,7 @@ If triggering, first capture the review baseline and carry it into 8c:
 BOT_PATTERN="codex"
 REVIEW_BASELINE_COMMENTS=$(gh api "repos/{owner}/{repo}/pulls/{number}/comments" --paginate 2>/dev/null | jq -s --arg bp "$BOT_PATTERN" 'add | [.[] | select((.user.login // "") | test($bp; "i")) | select((.in_reply_to_id // null) == null) | select(.path != null)] | length')
 REVIEW_BASELINE_REVIEWS=$(gh api "repos/{owner}/{repo}/pulls/{number}/reviews" --paginate 2>/dev/null | jq -s --arg bp "$BOT_PATTERN" 'add | [.[] | select((.user.login // "") | test($bp; "i")) | select(.state != "COMMENTED")] | length')
+REVIEW_BASELINE_ISSUE_COMMENTS=$(gh api "repos/{owner}/{repo}/issues/{number}/comments" --paginate 2>/dev/null | jq -s --arg bp "$BOT_PATTERN" 'add | [.[] | select((.user.login // "") | test($bp; "i"))] | length')
 ```
 
 Never capture this baseline after waiting for CI; comments posted during that wait would be missed.
@@ -408,55 +420,34 @@ You MUST poll for bot responses — do NOT assume they are already complete. Sta
 
 ```bash
 # MUST use run_in_background: true — NEVER sleep in foreground
-./scripts/poll-reviews.sh {number} {owner}/{repo} "$REVIEW_BASELINE_COMMENTS" "$REVIEW_BASELINE_REVIEWS" "$BOT_PATTERN" 30 30 0
+./scripts/poll-reviews.sh {number} {owner}/{repo} "$REVIEW_BASELINE_COMMENTS" "$REVIEW_BASELINE_REVIEWS" "$BOT_PATTERN" 30 30 0 "$REVIEW_BASELINE_ISSUE_COMMENTS"
 ```
 
 Handle the exit state per [references/automated-review-loop.md](references/automated-review-loop.md) Phase 2.
 "Yes — review and fix": on `REVIEWS_READY`, follow Phases 3-7; "Just trigger": report results with no fixes.
+On `REVIEWS_CLEAN`, read `NEW_ISSUE_COMMENTS_FILE` if present and report the clean bot result from that file.
 
 **After 8c completes → proceed to Step 9.** The summary is the ONLY place to report final status and next steps.
 
 ## Step 9: Summary
 
-Present the final report:
+Before the final report, capture current PR state in parallel:
 
+```bash
+gh pr checks {number} --json name,state,bucket,description,link
+gh pr view {number} --json mergeable,mergeStateStatus
+gh api repos/{owner}/{repo}/issues/{number}/comments --paginate --jq '[.[] | select(.user.login | test("codex"; "i")) | {created_at, body, html_url}] | sort_by(.created_at) | last'
 ```
-## PR #{number} Review Feedback Addressed
 
-### Resolved ({count}/{total})
-- {path}:{line} — {category}: {brief description}
-  Reply: "{response summary}"
+Present only relevant sections:
 
-### Replied via PR Comment ({count})
-{if any threads used the Tier 3 fallback, list them here}
-- {path}:{line} — threaded reply unavailable, posted as PR comment
-{if none, omit this section}
-
-### Review Summaries ({count})
-- @{author} {state} — {fixed|explained|informational}: {brief description}
-
-### Unresolved ({count})
-- {path}:{line} — {reason not resolved}
-
-### Commits
-- {hash} — {message}
-
-### Files Modified
-- {list}
-
-### CI Validation
-{if CI loop ran, include the report from references/ci-validation-loop.md Phase 5}
-{if CI loop skipped, omit this section}
-
-### Automated Review
-{if review loop ran, include the report from references/automated-review-loop.md Phase 8}
-{if review loop skipped, omit this section}
-
-### Next Steps
-- {if all resolved and CI green}: Ready for re-review
-- {if unresolved remain}: {count} threads need follow-up
-- {if CI failures remain}: {count} CI failures need investigation
-```
+| Section | Include |
+|---------|---------|
+| Resolved / Replied via PR Comment / Review Summaries / Unresolved | Counts, paths, categories, and reply summaries. |
+| Commits / Files Modified | Hashes and filenames changed by this run; omit if no code changed. |
+| CI Validation | If watched, use the CI loop report; if skipped by `--no-ci`, include the current pass/fail/pending snapshot. |
+| Automated Review | Include new actionable comments, skipped comments, or clean top-level bot comments. |
+| Next Steps | Say ready for re-review only when comments are addressed and current checks are green. |
 
 **Offer to request re-review** if all threads are resolved. Determine reviewers from the `--reviewer` argument (if provided) or by deduplicating `comments[0].author` from addressed threads:
 

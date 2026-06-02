@@ -48,9 +48,9 @@ mutation {
 
 ## Reply to a Review Thread (Tier 1 — GraphQL, preferred)
 
-Uses the GraphQL `addPullRequestReviewThreadReply` mutation. This is the preferred method because the
-REST reply endpoint (`pulls/comments/{id}/replies`) returns 404 on some repositories (e.g., large monorepos
-with bot-authored review comments) even when the comment exists and permissions are correct.
+Uses the GraphQL `addPullRequestReviewThreadReply` mutation.
+This is the preferred method because it can resolve the thread after replying,
+while REST can only add a comment reply.
 
 ```bash
 gh api graphql -f query='
@@ -96,17 +96,16 @@ Falls back to the REST API when the GraphQL mutation fails (e.g., thread already
 or `thread_id` is missing). Requires `first_comment_id` from the script output.
 
 ```bash
-gh api repos/{owner}/{repo}/pulls/comments/{databaseId}/replies \
+gh api repos/{owner}/{repo}/pulls/{number}/comments/{databaseId}/replies \
   -X POST \
   -f body='{response text}'
 ```
 
 Replace:
 - `{owner}/{repo}` — the repository (e.g., `DataDog/dd-source`)
+- `{number}` — the PR number
 - `{databaseId}` — the `first_comment_id` from the script output
 - `{response text}` — the reply body (supports GitHub-flavored markdown)
-
-**Note:** This endpoint may return 404 on some repositories. If it fails, fall back to Tier 3.
 
 ## Reply via PR Comment (Tier 3 — last resort)
 
