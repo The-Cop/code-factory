@@ -24,10 +24,35 @@ LOG_EVERY="${4:-0}"
 # Case-insensitive patterns for checks that require human approval.
 # These are excluded from pending/failure counts — they never auto-complete.
 GATED_PATTERN="merge.gate|peer.review|manual.approval|codeowner|devflow/mergegate"
+DDCI_DISCOVERY_POLLS="${PR_FIX_DDCI_DISCOVERY_POLLS:-6}"
+DDCI_DOWNSTREAM_POLLS="${PR_FIX_DDCI_DOWNSTREAM_POLLS:-6}"
 
 if ! [[ "$LOG_EVERY" =~ ^[0-9]+$ ]]; then
   LOG_EVERY=0
 fi
+if ! [[ "$DDCI_DISCOVERY_POLLS" =~ ^[0-9]+$ ]]; then
+  DDCI_DISCOVERY_POLLS=6
+fi
+if ! [[ "$DDCI_DOWNSTREAM_POLLS" =~ ^[0-9]+$ ]]; then
+  DDCI_DOWNSTREAM_POLLS=6
+fi
+
+REPO_FULL_NAME=$(gh repo view --json nameWithOwner -q '.nameWithOwner' 2>/dev/null || true)
+case "${PR_FIX_EXPECT_DDCI:-auto}" in
+  1|true|TRUE|yes|YES)
+    EXPECT_DDCI=1
+    ;;
+  0|false|FALSE|no|NO)
+    EXPECT_DDCI=0
+    ;;
+  *)
+    if [ "$REPO_FULL_NAME" = "DataDog/dd-source" ]; then
+      EXPECT_DDCI=1
+    else
+      EXPECT_DDCI=0
+    fi
+    ;;
+esac
 
 filter_gated() {
   jq --arg pattern "$GATED_PATTERN" '[.[] | select((.name | ascii_downcase | test($pattern)) | not)]'
@@ -48,6 +73,8 @@ write_status_file() {
 
 LAST_COUNTS=""
 LAST_FILTERED="[]"
+DDCI_WAIT_NOTICE=0
+DDCI_TASK_DONE_NO_DOWNSTREAM_POLLS=0
 
 for i in $(seq 1 "$MAX_POLLS"); do
   # gh pr checks exits 8 when checks are pending — capture output regardless
@@ -66,7 +93,10 @@ for i in $(seq 1 "$MAX_POLLS"); do
   PENDING=$(echo "$FILTERED" | jq '[.[] | select(.state == "PENDING" or .state == "IN_PROGRESS" or .state == "QUEUED")] | length')
   TOTAL=$(echo "$FILTERED" | jq 'length')
   PASSED=$((TOTAL - FAILED - PENDING))
-  COUNTS="passed=$PASSED pending=$PENDING failed=$FAILED total=$TOTAL"
+  DDCI_TASK_COUNT=$(echo "$FILTERED" | jq '[.[] | select(((.name // "") | ascii_downcase) == "ddci task sourcing")] | length')
+  DDCI_DOWNSTREAM_COUNT=$(echo "$FILTERED" | jq '[.[] | select((.name // "" | ascii_downcase | startswith("dd-gitlab/")))] | length')
+  DDCI_ANY_COUNT=$((DDCI_TASK_COUNT + DDCI_DOWNSTREAM_COUNT))
+  COUNTS="passed=$PASSED pending=$PENDING failed=$FAILED total=$TOTAL ddci_task=$DDCI_TASK_COUNT ddci_downstream=$DDCI_DOWNSTREAM_COUNT"
   LAST_FILTERED="$FILTERED"
 
   if { [ -n "$LAST_COUNTS" ] && [ "$COUNTS" != "$LAST_COUNTS" ]; } || should_log "$i"; then
@@ -88,6 +118,28 @@ for i in $(seq 1 "$MAX_POLLS"); do
   fi
 
   if [ "$PENDING" -eq 0 ] && [ "$TOTAL" -gt 0 ]; then
+    if [ "$EXPECT_DDCI" -eq 1 ] && [ "$DDCI_ANY_COUNT" -eq 0 ] && [ "$i" -le "$DDCI_DISCOVERY_POLLS" ]; then
+      if [ "$DDCI_WAIT_NOTICE" -eq 0 ]; then
+        echo "waiting for DDCI checks to register before accepting all-passing state"
+        DDCI_WAIT_NOTICE=1
+      fi
+      sleep "$POLL_INTERVAL"
+      continue
+    fi
+
+    if [ "$EXPECT_DDCI" -eq 1 ] && [ "$DDCI_TASK_COUNT" -gt 0 ] && [ "$DDCI_DOWNSTREAM_COUNT" -eq 0 ]; then
+      DDCI_TASK_DONE_NO_DOWNSTREAM_POLLS=$((DDCI_TASK_DONE_NO_DOWNSTREAM_POLLS + 1))
+      if [ "$DDCI_TASK_DONE_NO_DOWNSTREAM_POLLS" -le "$DDCI_DOWNSTREAM_POLLS" ]; then
+        if [ "$DDCI_WAIT_NOTICE" -eq 0 ]; then
+          echo "waiting for dd-gitlab downstream checks after DDCI Task Sourcing"
+          DDCI_WAIT_NOTICE=1
+        fi
+        sleep "$POLL_INTERVAL"
+        continue
+      fi
+      echo "DDCI downstream checks did not register after $DDCI_DOWNSTREAM_POLLS all-passing polls; accepting visible checks"
+    fi
+
     # All non-gated checks passed — verify PR is still mergeable before declaring green
     MERGEABLE=$(gh pr view "$PR_NUMBER" --json mergeable --jq '.mergeable' 2>/dev/null || echo "UNKNOWN")
     if [ "$MERGEABLE" = "CONFLICTING" ]; then

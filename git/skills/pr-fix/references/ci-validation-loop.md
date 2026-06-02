@@ -18,6 +18,7 @@ ${CLAUDE_PLUGIN_ROOT}/skills/pr-fix/scripts/poll-ci.sh {number} 30 40 0
 
 **MUST run with `run_in_background: true`.** The script automatically filters out approval-gated checks (merge gate, peer review, manual approval, codeowner, devflow/mergegate) and polls every 30 seconds for up to 20 minutes.
 The final `0` keeps unchanged progress quiet; pass a positive `log-every` only when the user asked for live progress.
+For `DataDog/dd-source`, the poller waits for DDCI checks to register before accepting an all-passing state; this prevents early success while downstream `dd-gitlab/*` jobs are still attaching.
 
 ### Handle the script's exit state
 
@@ -71,9 +72,26 @@ Output is tab-separated: `job_id`, `job_name`, `status`, `failure_reason`.
 get_ddci_logs.sh {job_id} {request_id} --summary
 ```
 
-**If `get_ddci_logs.sh` is not available:** do not run extra CI status commands.
-Report the failed check name and Mosaic URL from `STATUS_FILE`.
-Without logs, classify the failure as not auto-fixable unless the check name alone identifies a changed file and exact fix.
+**If GitLab/DDCI logs are unavailable:** diagnose credentials, then use PR comments before giving up.
+
+| Check | Command | If it fails |
+|-------|---------|-------------|
+| `get_ddci_logs.sh` exists | `command -v get_ddci_logs.sh` | Continue with PR-comment fallback. |
+| `GITLAB_TOKEN` works | `[ -n "${GITLAB_TOKEN:-}" ] && curl -fsS -H "Authorization: Bearer $GITLAB_TOKEN" https://gitlab.ddbuild.io/api/v4/user >/dev/null` | If unset, `invalid_token`, or expired, do not print the token; continue. |
+| `ddtool` token works | `ddtool auth gitlab token` | If `invalid_grant`, report that GitLab auth must be refreshed; continue. |
+| project token works | `ddtool auth gitlab project-token {owner} {repo}` | If securestore/keychain write fails, report it; continue. |
+
+Fetch compact Datadog CI PR comments for the failed check, head SHA, job name, or common failing test name:
+
+```bash
+gh api repos/{owner}/{repo}/issues/{number}/comments --paginate \
+  --jq '[.[] | select((.body // "") | test("{failed_check}|{head_sha}|gazelle_check|repository-checks"; "i")) | {author:.user.login, updated_at, body:(.body[0:4000])}]'
+```
+
+Extract failed test names, job names, commit SHA, linked paths, and short error text.
+Datadog CI comments often contain enough information to fix format, Gazelle, repository-check, and test failures even when GitLab logs are inaccessible.
+
+If neither logs nor PR comments identify a file, line, test, or exact command, classify the failure as not auto-fixable and report the Mosaic/GitLab URL.
 
 ### GitHub Actions Failures
 
@@ -165,6 +183,26 @@ For each failure, in priority order:
 | Confidence threshold | Only auto-fix if you can identify the exact root cause from the logs |
 | Ask on ambiguity | If multiple fixes are possible, present options to the user |
 | Never suppress tests | Do not skip, disable, or mark tests as expected-failure to pass CI |
+
+### Datadog Source Repository Checks
+
+For `tools/format/gazelle_check`, stale BUILD metadata is likely after Go, Python, or proto import changes.
+Use the repo's generator first:
+
+```bash
+bzl run //:gazelle -- update {touched directories}
+```
+
+If Bazel/Gazelle is blocked by local auth or credential-helper setup, use a scoped fallback:
+
+1. Read the failing CI comment or log to identify the touched package.
+2. Run language-native metadata in that package only, using temp dirs under `/tmp` if needed:
+   ```bash
+   TMPDIR=/tmp GOTMPDIR=/tmp GOCACHE=/tmp/go-cache go list -json {package_or_dir}
+   ```
+3. Compare imports against direct `deps`/`test deps` in the nearby `BUILD.bazel`.
+4. Remove stale deps or add missing deps only when the mapping is unambiguous.
+5. Record the generator blocker and manual BUILD edit in the final report.
 
 ### Scope Discipline
 

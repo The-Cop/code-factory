@@ -60,9 +60,6 @@ Run in parallel:
 - `gh repo view --json nameWithOwner -q '.nameWithOwner'` (split on `/` to get `{owner}` and `{repo}` for API calls)
 - `git branch --show-current`
 - `git status --porcelain=v1 --branch --untracked-files=no | sed -n '1,80p'`
-Keep git state reads compact.
-Do not run unbounded `git status --short` on merge-fix branches or during a merge;
-large staged staging merges can print thousands of paths.
 
 **If `gh` is not authenticated:** inform the user to run `gh auth login`. Stop.
 
@@ -97,8 +94,7 @@ Determine which steps to execute based on parsed flags:
 | `--no-ci` set | Skip Step 8b. |
 | `--no-comments` + `--no-bot-reviews` + `--no-ci` | Nothing to do. Inform user and stop. |
 
-If all of Step 8 is skipped (`--no-bot-reviews` + `--no-ci`), stop after Step 7 (commit and push).
-If `--no-comments` is set and all of Step 8 is also skipped, inform the user that all features are disabled and stop.
+If all of Step 8 is skipped, stop after Step 7; if all features are disabled, inform the user and stop.
 
 ## Step 2: Fetch Review Feedback
 
@@ -112,24 +108,16 @@ Use `-p` so large outputs return small pointer objects instead of dumping every 
 ./scripts/get-pr-review-summaries.sh -p {number}
 ```
 
-For a comment URL, pass the full URL to `get-pr-comments.sh`; fetch summaries too unless the user gave one exact comment URL.
+For a comment URL, pass it to `get-pr-comments.sh`; skip summaries only when the user gave one exact comment URL.
 
-**If stdout is an object with `output_file`:** read that path and use its JSON array.
-Do not re-run the script without `-p`; that would print the same large payload.
+**If stdout is an object with `output_file`:** read that path; do not re-run without `-p`.
 
-`get-pr-comments.sh` returns `THREADS`: a JSON array of review threads.
-Use `thread_id`, `first_comment_id`, `path`, `line`, `start_line`, and `comments[]` for edits, replies, and resolution.
-
+`get-pr-comments.sh` returns `THREADS` with `thread_id`, `first_comment_id`, `path`, `line`, `start_line`, and `comments[]`.
 `get-pr-review-summaries.sh` returns `REVIEWS`: top-level review bodies that do not create inline threads.
 
-**If `--reviewer` specified:** pass it to the review-summary script and filter threads:
+**If `--reviewer` specified:** pass `-r "{reviewer}"` to both scripts.
 
-```bash
-./scripts/get-pr-review-summaries.sh -p -r "{reviewer}" {number}
-./get-pr-comments.sh -a -p -r "{reviewer}" {number}
-```
-
-**If no threads and no review summaries are returned:** all review feedback is addressed; skip to Step 8.
+**If no threads and no review summaries are returned:** all review feedback is addressed. Skip to Step 8.
 
 ## Step 3: Categorize and Prioritize
 
@@ -142,9 +130,7 @@ Classify each thread and review summary into one category:
 | **Question** | Ends with `?`, asks "why", requests clarification | Respond with explanation |
 | **Disagreement** | Reviewer challenges a design decision, requests a revert or alternative approach | **NEVER auto-resolve.** Present to user for decision. |
 | **Outdated** | Thread `outdated` is true or all comments have `outdated: true` | Read current code at `path`. If the concern is already addressed, resolve with a note. If not, reclassify as Code change or Question. |
-| **Review summary** | Non-empty review body without inline thread | Inspect current code. If it names a concrete improvement, treat as Code change or Question; otherwise mark informational. |
-
-For review summaries, do not assume `APPROVED` means "no action"; approval bodies can contain useful improvements.
+| **Review summary** | Non-empty review body without inline thread | Inspect current code; implement concrete improvements or mark informational. |
 
 Assign priority:
 
@@ -219,14 +205,14 @@ For threads requiring code changes:
 3. Apply the change using the Edit tool.
 4. If the fix is unclear, ask the user for clarification before proceeding.
 
-For review-summary code changes, search the changed-files list for the named topic; use broader searches only for named symbols absent from changed files.
+For review-summary code changes, search changed files for the named topic; search broader only for named symbols absent from changed files.
 
 ### Pattern Scanning
 
 After applying a code change, scan the other files in the changed-files list (from Step 1) for the same pattern. If the reviewer flagged missing error handling, a naming convention, or a structural issue — the same problem likely exists elsewhere in this PR.
 
 1. Use Grep to search the changed files for the same pattern.
-2. Fix all occurrences, not just the one the reviewer flagged.
+2. Fix all matching occurrences, not only the one the reviewer flagged.
 3. Note the additional fixes in the Step 6 reply: "Fixed here and in {N} other locations: {file1}, {file2}."
 
 Only scan for the **exact pattern** the reviewer identified. Do not generalize into a broad lint pass.
@@ -270,36 +256,30 @@ Response format by category:
 Prefix replies with `*Automated response from {agent}:*`, where `{agent}` is the current agent name or `pr-fix`.
 Do not resolve automated reviewer threads.
 
-The helper resolves the thread unless `--no-resolve` is passed.
-If `thread_id` is missing, skip resolution and note as "replied but not resolved" in Step 9.
+The helper resolves the thread unless `--no-resolve` is passed; if `thread_id` is missing, note "replied but not resolved" in Step 9.
 
 **Do NOT resolve:**
 - Threads where the user chose "Discuss further"
 - Threads where the reply is a question back to the reviewer
 - Threads from automated reviewers
 
-For addressed review summaries, there is no thread to resolve.
-Reply with a top-level PR comment only when code changed or the reviewer asked a direct question: `Addressed review summary from @{author}: {brief result}.`
+For addressed review summaries, there is no thread to resolve; post a top-level PR comment only when code changed or the reviewer asked a direct question.
 
 ## Step 7: Commit and Push
 
-Group changes into logical commits.
-Use one commit for one concern, even when it spans multiple files.
-Use separate commits for unrelated concerns.
+Group changes into logical commits: one concern per commit, even when it spans multiple files.
 
 Before committing, run independent local validations in parallel.
 Choose checks from the changed file types and repo guidance, for example:
 
 ```bash
-git diff --check -- {changed-files}              # scoped whitespace/conflict-marker check
-git diff --name-only --diff-filter=U             # unresolved conflicts
-bash -n {changed-shell-files}                    # shell syntax
+git diff --check -- {changed-files}          # whitespace and conflict markers
+git diff --name-only --diff-filter=U         # unresolved merge conflicts
+bash -n {changed-shell-files}                # shell syntax
 ```
 
-Do not serialize independent syntax, formatting, and lightweight test checks.
-Launch them in one parallel tool call/session group when possible.
-Keep validation output scoped to changed files; use full-repo checks only when broad/generated changes require them.
-If a validation cannot run locally, record the reason for Step 9.
+Do not serialize independent syntax, formatting, and lightweight test checks; launch them in one parallel tool call, keep output scoped to changed files, and record blockers in Step 9.
+After Go, Python, or proto import changes, run the repo-required dependency generator before tests; if blocked, compare imports to nearby BUILD deps and report the blocker in Step 9.
 
 Commit message format — follow the repo's convention detected from `git log --oneline -5`. If the repo uses conventional commits:
 
@@ -328,8 +308,7 @@ Do not write a final summary until all enabled waiters and any fix loops have co
 
 **POLLING RULE — NEVER use inline `sleep` loops, `sleep N && gh pr checks`, or any foreground sleep-based polling.**
 All CI and review waiting MUST use the background scripts below with `run_in_background: true` or the equivalent parallel exec/session mechanism.
-Pass `0` as `log-every` unless the user asked for live progress; quiet waiters return only actionable state changes and final output.
-Scripts check immediately on first poll (zero delay), so results already ready return instantly.
+Pass `0` as `log-every` unless the user asked for live progress; scripts check immediately and return only actionable state changes plus final output.
 
 ### 8a: Trigger Automated Reviews (if stale)
 
@@ -399,8 +378,7 @@ Do not wait here; 8c starts the review poller. **Proceed to 8b.**
 ```
 
 Handle the exit state per [references/ci-validation-loop.md](references/ci-validation-loop.md) Phase 1.
-"Yes — watch and fix": on `FAILURES_DETECTED`, follow Phases 2-4 (analyze, fix, loop — max 3 iterations).
-"Just watch": report results from script output. No fixes applied.
+"Yes — watch and fix": on `FAILURES_DETECTED`, follow Phases 2-4; "Just watch": report script output with no fixes.
 
 If the review waiter is also enabled, launch it in the same parallel tool call/session group.
 Keep both waiters running independently and process whichever returns an actionable state first.
@@ -418,8 +396,7 @@ You MUST poll for bot responses — do NOT assume they are already complete. Sta
 ```
 
 Handle the exit state per [references/automated-review-loop.md](references/automated-review-loop.md) Phase 2.
-"Yes — review and fix": on `REVIEWS_READY`, follow Phases 3-7 (read, fix, push, reply, loop — max 3 iterations).
-"Just trigger": report results. No fixes.
+"Yes — review and fix": on `REVIEWS_READY`, follow Phases 3-7; "Just trigger": report results with no fixes.
 
 **After 8c completes → proceed to Step 9.** The summary is the ONLY place to report final status and next steps.
 
@@ -440,9 +417,7 @@ Present the final report:
 {if none, omit this section}
 
 ### Review Summaries ({count})
-{if any non-empty review bodies were processed}
 - @{author} {state} — {fixed|explained|informational}: {brief description}
-{if none, omit this section}
 
 ### Unresolved ({count})
 - {path}:{line} — {reason not resolved}
@@ -483,8 +458,8 @@ gh pr edit {number} --add-reviewer {reviewer1},{reviewer2}
 | Review summaries only | Inspect non-empty review bodies. Implement clear improvements or reply/explain; do not skip solely because threads are resolved. |
 | All features disabled | `--no-comments` + `--no-bot-reviews` + `--no-ci` — nothing to do. Inform user and stop. |
 | `get-pr-comments.sh` fails | Fall back to REST: `gh api repos/{owner}/{repo}/pulls/{number}/comments`. Lose thread resolution data but can still categorize and fix. |
-| `get-pr-review-summaries.sh` fails | Fall back to REST reviews: `gh api repos/{owner}/{repo}/pulls/{number}/reviews --paginate`. Keep only non-empty `body` fields. |
-| Large output (>25KB) | Pointer-mode scripts return `{"output_file": "..."}`. Read that file; do not re-run without `-p`. |
+| `get-pr-review-summaries.sh` fails | Fall back to REST reviews: `gh api repos/{owner}/{repo}/pulls/{number}/reviews --paginate`. Keep non-empty `body` fields. |
+| Large output (>25KB) | Script auto-writes to `/tmp/pr-comments-{owner}-{repo}-{pr}.json`. Use the Read tool on that path. |
 | Thread resolution fails | Report the error. The reply was still posted. Continue with remaining threads. |
 | Reply fails | Try Tier 2 (REST), then Tier 3 (PR comment). If all tiers fail, report the error and log the intended response. Continue with remaining threads. |
 | Edit fails (file not found) | The file may have been renamed or deleted. Report to user. Skip thread. |
@@ -494,6 +469,6 @@ gh pr edit {number} --add-reviewer {reviewer1},{reviewer2}
 | CI poller timeout | If `poll-ci.sh` reports TIMEOUT (20 min), report to user and ask how to proceed. |
 | CI fix loop exceeds 3 iterations | Stop. Report remaining failures with log excerpts. Let user investigate. |
 | Same CI failure recurs after fix | Mark as unfixable. Do NOT retry the same fix. Report to user. |
-| DDCI logs unavailable | Skip log analysis. Report the Mosaic URL for manual investigation. |
+| DDCI logs unavailable | Diagnose GitLab auth, read Datadog CI PR comments, then report Mosaic/GitLab URLs if no exact failure detail is available. |
 | Codex not configured | If no review appears after 15-min timeout, skip that reviewer. Continue with others. |
 | Automated review loop exceeds 3 iterations | Stop. Report remaining review comments. Let user investigate. |

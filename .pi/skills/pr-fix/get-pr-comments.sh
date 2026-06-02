@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Usage: ./get-pr-comments.sh [-v] [-a] [-f] [-o] [-p] [pr-number|pr-url|comment-url]
+# Usage: ./get-pr-comments.sh [-v] [-a] [-f] [-o] [-p] [-r reviewer] [pr-number|pr-url|comment-url]
 #
 # Fetches PR review comment threads as structured JSON with resolution status.
 # Uses GitHub GraphQL API with pagination for accurate thread data.
@@ -11,6 +11,7 @@
 #   -f    Full mode - include diff_hunk fields (default: compact without diff_hunks)
 #   -o    Oldest-first chronological order (default: newest first)
 #   -p    Path-only large output - when output exceeds 25KB, print a small JSON pointer
+#   -r    Reviewer filter - include only threads started by this reviewer login
 #
 # Input formats:
 #   No argument       Auto-detect PR from current branch
@@ -38,6 +39,7 @@ ACTIONABLE_ONLY=0
 FULL_MODE=0
 OLDEST_FIRST=0
 PATH_ONLY_ON_LARGE=0
+REVIEWER=""
 
 log_verbose() {
   if [ "$VERBOSE" -eq 1 ]; then
@@ -50,13 +52,14 @@ log_error() {
 }
 
 # Parse flags
-while getopts "vafop" opt; do
+while getopts "vafopr:" opt; do
   case $opt in
     v) VERBOSE=1; log_verbose "Verbose mode enabled" ;;
     a) ACTIONABLE_ONLY=1; log_verbose "Actionable-only mode enabled" ;;
     f) FULL_MODE=1; log_verbose "Full mode enabled (including diff_hunks)" ;;
     o) OLDEST_FIRST=1; log_verbose "Oldest-first mode enabled" ;;
     p) PATH_ONLY_ON_LARGE=1; log_verbose "Path-only mode enabled for large output" ;;
+    r) REVIEWER="$OPTARG"; log_verbose "Reviewer filter: $REVIEWER" ;;
     \?) log_error "Invalid option: -$OPTARG"; exit 1 ;;
   esac
 done
@@ -247,6 +250,14 @@ if [ -n "$SPECIFIC_COMMENT_ID" ]; then
   fi
 fi
 
+# Filter by reviewer if requested. Thread authorship follows the first review comment.
+if [ -n "$REVIEWER" ]; then
+  THREADS_JSON=$(echo "$THREADS_JSON" | jq --arg reviewer "$REVIEWER" \
+    '[.[] | select((.comments[0].author // "") == $reviewer)]')
+  REVIEWER_THREADS=$(echo "$THREADS_JSON" | jq 'length')
+  log_verbose "Filtered to $REVIEWER_THREADS threads from reviewer $REVIEWER"
+fi
+
 # Sort threads
 if [ "$OLDEST_FIRST" -eq 1 ]; then
   THREADS_JSON=$(echo "$THREADS_JSON" | jq 'sort_by(.comments[0].created_at)')
@@ -268,6 +279,8 @@ fi
 
 # Handle large output — auto-write to temp file when >25KB
 OUTPUT_SIZE=$(echo "$THREADS_JSON" | wc -c | tr -d ' ')
+OUTPUT_THREADS=$(echo "$THREADS_JSON" | jq 'length')
+OUTPUT_COMMENTS=$(echo "$THREADS_JSON" | jq '[.[].comments | length] | add // 0')
 
 if [ "$OUTPUT_SIZE" -gt 25000 ]; then
   TEMP_FILE="/tmp/pr-comments-${OWNER}-${REPO_NAME}-${PR_NUMBER}.json"
@@ -278,8 +291,8 @@ if [ "$OUTPUT_SIZE" -gt 25000 ]; then
     jq -n \
       --arg output_file "$TEMP_FILE" \
       --argjson bytes "$OUTPUT_SIZE" \
-      --argjson threads "$TOTAL_THREADS" \
-      --argjson comments "$TOTAL_COMMENTS" \
+      --argjson threads "$OUTPUT_THREADS" \
+      --argjson comments "$OUTPUT_COMMENTS" \
       '{output_file: $output_file, bytes: $bytes, thread_count: $threads, comment_count: $comments}'
     exit 0
   fi
