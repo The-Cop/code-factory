@@ -2,29 +2,27 @@ model = "gpt-5.5"
 plan_mode_reasoning_effort = "xhigh"
 model_reasoning_effort = "xhigh"
 
-approval_policy = "never"
-
-sandbox_mode = "danger-full-access"
+approval_policy = "untrusted"
+default_permissions = "datadog-dev"
 
 [shell_environment_policy]
 inherit = "all"
 set = { BROWSER = "/usr/bin/open" }
 
-# default_permissions = "datadog-dev"
-# [permissions.datadog-dev]
-# description = "Read most files, write selected dev roots, allow network, keep sensitive dirs blocked."
+[permissions.datadog-dev]
+description = "Read most files, write selected dev roots, allow network, keep sensitive dirs blocked."
 
-# [permissions.datadog-dev.filesystem]
-# ":root" = "read"
-# "/Users/rodrigo.fernandes/.aws" = "deny"
-# "/Users/rodrigo.fernandes/.config/gh" = "deny"
-# "/Users/rodrigo.fernandes/.ssh" = "deny"
-# "/Users/rodrigo.fernandes/.ssh/known_hosts" = "read"
+[permissions.datadog-dev.filesystem]
+":root" = "read"
+"/Users/rodrigo.fernandes/.aws" = "deny"
+"/Users/rodrigo.fernandes/.config/gh" = "deny"
+"/Users/rodrigo.fernandes/.ssh" = "deny"
+"/Users/rodrigo.fernandes/.ssh/known_hosts" = "read"
 
-# # OIDC / Datadog auth caches. Keep these narrow.
-# "/Users/rodrigo.fernandes/.config/ddtool" = "write"
-# "/Users/rodrigo.fernandes/.config/datadog" = "write"
-# "/Users/rodrigo.fernandes/.vault-token" = "write"
+# OIDC / Datadog auth caches. Keep these narrow.
+"/Users/rodrigo.fernandes/.config/ddtool" = "write"
+"/Users/rodrigo.fernandes/.config/datadog" = "write"
+"/Users/rodrigo.fernandes/.vault-token" = "write"
 
 # Add Bazel cache root after checking it with:
 #   bazel info output_user_root
@@ -33,25 +31,25 @@ set = { BROWSER = "/usr/bin/open" }
 # Example only:
 # "/private/var/tmp/_bazel_rodrigo.fernandes" = "write"
 
-# [permissions.datadog-dev.workspace_roots]
-# "/Users/rodrigo.fernandes/docs" = true
-# "/Users/rodrigo.fernandes/dev" = true
-# "/Users/rodrigo.fernandes/dd" = true
-# "/Users/rodrigo.fernandes/go" = true
-# "/Users/rodrigo.fernandes/Downloads" = true
-# "/tmp" = true
-# "/private/tmp" = true
-# "/private/var/tmp" = true
+[permissions.datadog-dev.workspace_roots]
+"/Users/rodrigo.fernandes/docs" = true
+"/Users/rodrigo.fernandes/dev" = true
+"/Users/rodrigo.fernandes/dd" = true
+"/Users/rodrigo.fernandes/go" = true
+"/Users/rodrigo.fernandes/Downloads" = true
+"/tmp" = true
+"/private/tmp" = true
+"/private/var/tmp" = true
 
-# [permissions.datadog-dev.filesystem.":workspace_roots"]
-# "." = "write"
+[permissions.datadog-dev.filesystem.":workspace_roots"]
+"." = "write"
 
-# [permissions.datadog-dev.network]
-# enabled = true
-# mode = "full"
+[permissions.datadog-dev.network]
+enabled = true
+mode = "full"
 
-# [permissions.datadog-dev.network.domains]
-# "*" = "allow"
+[permissions.datadog-dev.network.domains]
+"*" = "allow"
 
 [projects."/Users/rodrigo.fernandes/dev"]
 trust_level = "trusted"

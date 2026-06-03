@@ -265,8 +265,8 @@ Generates `.codex/skills` (with collapsed single-line frontmatter and per-skill 
 
 ### `codex/config.toml` and `codex/rules/`
 
-Managed Codex defaults. `codex/config.toml` sets Codex to default-allow command execution with `approval_policy = "never"` and `sandbox_mode = "danger-full-access"`, so commands run without filesystem or network sandboxing.
-Safety policy comes from `codex/rules/code-factory.rules`, which prompts or blocks selected high-risk command prefixes.
+Managed Codex defaults. `codex/config.toml` uses `approval_policy = "untrusted"` so Codex asks before non-read-only shell/CLI operations outside its trusted command set.
+Filesystem and network access come from the `datadog-dev` permission profile: Codex can read most files, write only selected development roots (`~/dev`, `~/dd`, `~/go`, `~/docs`, `~/Downloads`, and temp roots), write narrow Datadog auth/cache paths, and keeps sensitive paths such as `~/.aws`, `~/.config/gh`, and `~/.ssh` denied except `~/.ssh/known_hosts` read access.
 
 `codex/rules/code-factory.rules` prompts for concrete dangerous command prefixes such as system mutation, destructive recursive deletion of high-value roots, history-rewriting git operations, and global package installs. Codex execpolicy rules are prefix-based, not full shell-string scanners, so broad shell commands like `zsh -lc "..."` are not inspected the same way Claude's Bash hook can inspect command text.
 
@@ -274,6 +274,7 @@ Safety policy comes from `codex/rules/code-factory.rules`, which prompts or bloc
 
 Updates `~/.codex/config.toml` from `codex/config.toml` and `mcp.json`, preserving unrelated Codex settings and unrelated MCP servers.
 The generated sections are marked in the TOML file so rerunning `./init.sh` refreshes managed settings and servers idempotently.
+Managed Codex MCP servers use `default_tools_approval_mode = "auto"` so read-only tools can run normally while Codex prompts for side-effecting MCP operations based on tool metadata.
 When an MCP server declares an OAuth `callbackPort`, the script also writes Codex's global MCP OAuth callback port and localhost callback URL as top-level TOML settings so OAuth providers with fixed redirect URIs can complete login.
 
 ### `sync-pi.sh` and `pi-extensions/`
