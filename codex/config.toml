@@ -4,11 +4,11 @@ model_reasoning_effort = "xhigh"
 
 approval_policy = "never"
 
+sandbox_mode = "danger-full-access"
+
 [shell_environment_policy]
 inherit = "all"
 set = { BROWSER = "/usr/bin/open" }
-
-sandbox_mode = "danger-full-access"
 
 # default_permissions = "datadog-dev"
 # [permissions.datadog-dev]
@@ -57,4 +57,10 @@ sandbox_mode = "danger-full-access"
 trust_level = "trusted"
 
 [projects."/Users/rodrigo.fernandes/dd"]
+trust_level = "trusted"
+
+[projects."/Users/rodrigo.fernandes/go"]
+trust_level = "trusted"
+
+[projects."/Users/rodrigo.fernandes/docs"]
 trust_level = "trusted"

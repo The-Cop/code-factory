@@ -40,7 +40,6 @@ from pathlib import Path
 
 path = Path(sys.argv[1])
 content = path.read_text()
-home = str(Path.home())
 
 required = [
     "# --- Codex Settings (managed by code-factory from codex/config.toml) ---",
@@ -48,19 +47,10 @@ required = [
     "# --- MCP Servers (managed by code-factory from mcp.json) ---",
     "# --- End MCP Servers ---",
     'approval_policy = "never"',
-    'default_permissions = "read-all-write-selected"',
-    "[permissions.read-all-write-selected.filesystem]",
-    '":root" = "read"',
-    f'"{home}/.ssh" = "deny"',
-    f'"{home}/.aws" = "deny"',
-    f'"{home}/.config/gh" = "deny"',
-    "[permissions.read-all-write-selected.workspace_roots]",
-    "[permissions.read-all-write-selected.filesystem.\":workspace_roots\"]",
-    '"." = "write"',
-    "[permissions.read-all-write-selected.network]",
-    "enabled = true",
-    "[permissions.read-all-write-selected.network.domains]",
-    '"*" = "allow"',
+    'sandbox_mode = "danger-full-access"',
+    "[shell_environment_policy]",
+    'inherit = "all"',
+    'set = { BROWSER = "/usr/bin/open" }',
     "[mcp_servers.atlassian]",
     "[mcp_servers.unrelated]",
     '[projects."/tmp/code-factory-preserve"]',
@@ -73,7 +63,7 @@ if missing:
 
 singletons = [
     "approval_policy",
-    "default_permissions",
+    "sandbox_mode",
     "mcp_oauth_callback_port",
     "mcp_oauth_callback_url",
 ]
@@ -82,8 +72,18 @@ for key in singletons:
     if count != 1:
         raise SystemExit(f"expected exactly one {key}, found {count}")
 
-if re.search(r"(?m)^sandbox_mode\s*=", content):
-    raise SystemExit("legacy sandbox_mode should be removed")
+try:
+    import tomllib
+except ModuleNotFoundError:
+    import tomli as tomllib
+
+data = tomllib.loads(content)
+if data.get("sandbox_mode") != "danger-full-access":
+    raise SystemExit("sandbox_mode must be top-level and set to danger-full-access")
+
+shell_environment_policy = data.get("shell_environment_policy", {})
+if "sandbox_mode" in shell_environment_policy:
+    raise SystemExit("sandbox_mode must not be nested under shell_environment_policy")
 
 if re.search(r"(?m)^\[sandbox_workspace_write\]\s*$", content):
     raise SystemExit("legacy [sandbox_workspace_write] table should be removed")

@@ -265,8 +265,8 @@ Generates `.codex/skills` (with collapsed single-line frontmatter and per-skill 
 
 ### `codex/config.toml` and `codex/rules/`
 
-Managed Codex defaults. `codex/config.toml` sets Codex to default-allow command execution with `approval_policy = "never"` and `default_permissions = "read-all-write-selected"`.
-The managed permission profile grants read access broadly, denies sensitive credential directories, allows writes only in selected workspace roots, and enables network access.
+Managed Codex defaults. `codex/config.toml` sets Codex to default-allow command execution with `approval_policy = "never"` and `sandbox_mode = "danger-full-access"`, so commands run without filesystem or network sandboxing.
+Safety policy comes from `codex/rules/code-factory.rules`, which prompts or blocks selected high-risk command prefixes.
 
 `codex/rules/code-factory.rules` prompts for concrete dangerous command prefixes such as system mutation, destructive recursive deletion of high-value roots, history-rewriting git operations, and global package installs. Codex execpolicy rules are prefix-based, not full shell-string scanners, so broad shell commands like `zsh -lc "..."` are not inspected the same way Claude's Bash hook can inspect command text.
 
