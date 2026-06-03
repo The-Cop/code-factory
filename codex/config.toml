@@ -2,34 +2,35 @@ model = "gpt-5.5"
 plan_mode_reasoning_effort = "xhigh"
 model_reasoning_effort = "xhigh"
 
-# Default-allow Codex execution posture managed by code-factory.
 approval_policy = "never"
-[sandbox]
-enabled = false
-allowUnsandboxedCommands = true
-# [sandbox_workspace_write]
-# network_access = true
-# writable_roots = [
-#   "/Users/rodrigo.fernandes/docs",
-#   "/Users/rodrigo.fernandes/dev",
-#   "/Users/rodrigo.fernandes/dd",
-#   "/Users/rodrigo.fernandes/go",
-#   "/Users/rodrigo.fernandes/Downloads",
-#   "/tmp",
-#   "/private/tmp",
-#   "/private/var/tmp",
-# ]
+default_permissions = "datadog-dev"
 
-default_permissions = "read-all-write-selected"
+[shell_environment_policy]
+set = { BROWSER = "/usr/bin/open" }
 
-[permissions.read-all-write-selected.filesystem]
+[permissions.datadog-dev]
+description = "Read most files, write selected dev roots, allow network, keep sensitive dirs blocked."
+
+[permissions.datadog-dev.filesystem]
 ":root" = "read"
 "/Users/rodrigo.fernandes/.aws" = "deny"
 "/Users/rodrigo.fernandes/.config/gh" = "deny"
 "/Users/rodrigo.fernandes/.ssh" = "deny"
 "/Users/rodrigo.fernandes/.ssh/known_hosts" = "read"
 
-[permissions.read-all-write-selected.workspace_roots]
+# OIDC / Datadog auth caches. Keep these narrow.
+"/Users/rodrigo.fernandes/.config/ddtool" = "write"
+"/Users/rodrigo.fernandes/.config/datadog" = "write"
+"/Users/rodrigo.fernandes/.vault-token" = "write"
+
+# Add Bazel cache root after checking it with:
+#   bazel info output_user_root
+# or:
+#   bzl info output_user_root
+# Example only:
+# "/private/var/tmp/_bazel_rodrigo.fernandes" = "write"
+
+[permissions.datadog-dev.workspace_roots]
 "/Users/rodrigo.fernandes/docs" = true
 "/Users/rodrigo.fernandes/dev" = true
 "/Users/rodrigo.fernandes/dd" = true
@@ -39,13 +40,14 @@ default_permissions = "read-all-write-selected"
 "/private/tmp" = true
 "/private/var/tmp" = true
 
-[permissions.read-all-write-selected.filesystem.":workspace_roots"]
+[permissions.datadog-dev.filesystem.":workspace_roots"]
 "." = "write"
 
-[permissions.read-all-write-selected.network]
+[permissions.datadog-dev.network]
 enabled = true
+mode = "full"
 
-[permissions.read-all-write-selected.network.domains]
+[permissions.datadog-dev.network.domains]
 "*" = "allow"
 
 [projects."/Users/rodrigo.fernandes/dev"]
