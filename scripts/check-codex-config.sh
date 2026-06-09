@@ -63,7 +63,7 @@ required = [
     'default_permissions = "datadog-dev"',
     "[shell_environment_policy]",
     'inherit = "all"',
-    'set = { BROWSER = "/usr/bin/open" }',
+    'set = { BROWSER = "/usr/bin/open", TMPDIR = "/tmp", TMP = "/tmp", TEMP = "/tmp" }',
     "[permissions.datadog-dev]",
     "[permissions.datadog-dev.filesystem]",
     '":root" = "read"',
@@ -119,6 +119,18 @@ if data.get("default_permissions") != "datadog-dev":
 shell_environment_policy = data.get("shell_environment_policy", {})
 if "sandbox_mode" in shell_environment_policy:
     raise SystemExit("sandbox_mode must not be nested under shell_environment_policy")
+
+environment_set = shell_environment_policy.get("set", {})
+expected_environment = {
+    "BROWSER": "/usr/bin/open",
+    "TMPDIR": "/tmp",
+    "TMP": "/tmp",
+    "TEMP": "/tmp",
+}
+for key, expected in expected_environment.items():
+    actual = environment_set.get(key)
+    if actual != expected:
+        raise SystemExit(f"shell_environment_policy.set.{key}: expected {expected}, got {actual}")
 
 if re.search(r"(?m)^\[sandbox_workspace_write\]\s*$", content):
     raise SystemExit("legacy [sandbox_workspace_write] table should be removed")

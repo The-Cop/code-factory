@@ -7,7 +7,7 @@ default_permissions = "datadog-dev"
 
 [shell_environment_policy]
 inherit = "all"
-set = { BROWSER = "/usr/bin/open" }
+set = { BROWSER = "/usr/bin/open", TMPDIR = "/tmp", TMP = "/tmp", TEMP = "/tmp" }
 
 [permissions.datadog-dev]
 description = "Read most files, write selected dev roots, allow network, keep sensitive dirs blocked."
