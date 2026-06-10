@@ -32,12 +32,11 @@ description = "Read most files, write selected dev roots, allow network, keep se
 "/Users/rodrigo.fernandes/.config/datadog" = "write"
 "/Users/rodrigo.fernandes/.vault-token" = "write"
 
-# Add Bazel cache root after checking it with:
-#   bazel info output_user_root
-# or:
-#   bzl info output_user_root
-# Example only:
-# "/private/var/tmp/_bazel_rodrigo.fernandes" = "write"
+# Docker credential helpers: ddtool docker install-helper writes credHelpers to config.json.
+"/Users/rodrigo.fernandes/.docker" = "write"
+
+# Bazel cache: bzl/bazel writes build artifacts here.
+"/Users/rodrigo.fernandes/.cache/bazel" = "write"
 
 [permissions.code-factory.workspace_roots]
 "/Users/rodrigo.fernandes/docs" = true
