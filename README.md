@@ -265,8 +265,8 @@ Generates `.codex/skills` (with collapsed single-line frontmatter and per-skill 
 
 ### `codex/config.toml` and `codex/rules/`
 
-Managed Codex defaults. `codex/config.toml` uses `approval_policy = "untrusted"` so Codex asks before non-read-only shell/CLI operations outside its trusted command set.
-Filesystem and network access come from the `datadog-dev` permission profile: Codex can read most files, write only selected development roots (`~/dev`, `~/dd`, `~/go`, `~/docs`, `~/Downloads`, and temp roots), write narrow Datadog auth/cache paths, and keeps sensitive paths such as `~/.aws`, `~/.config/gh`, and `~/.ssh` denied except `~/.ssh/known_hosts` read access.
+Managed Codex defaults. `codex/config.toml` uses `approval_policy = "never"` so Codex does not pause for approval prompts during non-interactive runs.
+Filesystem and network access come from the `datadog-dev` permission profile: Codex can read most files, write only selected development roots (`~/dev`, `~/dd`, `~/go`, `~/docs`, `~/Downloads`, `/tmp`, and `/private/tmp`), write narrow Datadog auth/cache paths, and keeps sensitive paths such as `~/.aws`, `~/.config/gh`, and `~/.ssh` denied except `~/.ssh/known_hosts` write access.
 Managed shell environments set `TMPDIR`, `TMP`, and `TEMP` to `/tmp` so command temp files are created under an approved writable root.
 
 `codex/rules/code-factory.rules` prompts for concrete dangerous command prefixes such as system mutation, destructive recursive deletion of high-value roots, history-rewriting git operations, and global package installs. Codex execpolicy rules are prefix-based, not full shell-string scanners, so broad shell commands like `zsh -lc "..."` are not inspected the same way Claude's Bash hook can inspect command text.

@@ -59,8 +59,9 @@ required = [
     "# --- End Codex Settings ---",
     "# --- MCP Servers (managed by code-factory from mcp.json) ---",
     "# --- End MCP Servers ---",
-    'approval_policy = "untrusted"',
+    'approval_policy = "never"',
     'default_permissions = "datadog-dev"',
+    'allow_login_shell = true',
     "[shell_environment_policy]",
     'inherit = "all"',
     'set = { BROWSER = "/usr/bin/open", TMPDIR = "/tmp", TMP = "/tmp", TEMP = "/tmp" }',
@@ -110,8 +111,8 @@ data = tomllib.loads(content)
 if "sandbox_mode" in data:
     raise SystemExit("legacy sandbox_mode should be removed when default_permissions is active")
 
-if data.get("approval_policy") != "untrusted":
-    raise SystemExit("approval_policy must be untrusted")
+if data.get("approval_policy") != "never":
+    raise SystemExit("approval_policy must be never")
 
 if data.get("default_permissions") != "datadog-dev":
     raise SystemExit("default_permissions must select datadog-dev")
@@ -148,7 +149,7 @@ expected_filesystem = {
     "/Users/rodrigo.fernandes/.aws": "deny",
     "/Users/rodrigo.fernandes/.config/gh": "deny",
     "/Users/rodrigo.fernandes/.ssh": "deny",
-    "/Users/rodrigo.fernandes/.ssh/known_hosts": "read",
+    "/Users/rodrigo.fernandes/.ssh/known_hosts": "write",
     "/Users/rodrigo.fernandes/.config/ddtool": "write",
     "/Users/rodrigo.fernandes/.config/datadog": "write",
     "/Users/rodrigo.fernandes/.vault-token": "write",
@@ -167,7 +168,6 @@ for root in [
     "/Users/rodrigo.fernandes/Downloads",
     "/tmp",
     "/private/tmp",
-    "/private/var/tmp",
 ]:
     if workspace_roots.get(root) is not True:
         raise SystemExit(f"workspace root {root} must be enabled")
@@ -216,6 +216,18 @@ if config.get("status") != "ok":
 PY
 
 ALLOWED_WRITE="/tmp/code-factory-codex-permissions-allowed-$$"
+SANDBOX_PROBE_LOG="$TMP_DIR/sandbox-probe.log"
+if ! CODEX_HOME="$TMP_DIR" codex sandbox --permissions-profile datadog-dev --include-managed-config -- true 2>"$SANDBOX_PROBE_LOG"; then
+    if grep -q "sandbox_apply: Operation not permitted" "$SANDBOX_PROBE_LOG"; then
+        echo "  SKIP  Codex sandbox permission probes (sandbox-exec unavailable)"
+        echo "  OK  Codex managed config"
+        exit 0
+    fi
+
+    cat "$SANDBOX_PROBE_LOG" >&2
+    exit 1
+fi
+
 CODEX_HOME="$TMP_DIR" codex sandbox --permissions-profile datadog-dev --include-managed-config -- sh -c 'touch "$1" && rm "$1"' sh "$ALLOWED_WRITE"
 
 DENIED_WRITE="/Users/rodrigo.fernandes/code-factory-codex-permissions-denied-$$"

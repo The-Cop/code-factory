@@ -2,8 +2,9 @@ model = "gpt-5.5"
 plan_mode_reasoning_effort = "xhigh"
 model_reasoning_effort = "xhigh"
 
-approval_policy = "untrusted"
+approval_policy = "never"
 default_permissions = "datadog-dev"
+allow_login_shell = true
 
 [shell_environment_policy]
 inherit = "all"
@@ -17,7 +18,7 @@ description = "Read most files, write selected dev roots, allow network, keep se
 "/Users/rodrigo.fernandes/.aws" = "deny"
 "/Users/rodrigo.fernandes/.config/gh" = "deny"
 "/Users/rodrigo.fernandes/.ssh" = "deny"
-"/Users/rodrigo.fernandes/.ssh/known_hosts" = "read"
+"/Users/rodrigo.fernandes/.ssh/known_hosts" = "write"
 
 # OIDC / Datadog auth caches. Keep these narrow.
 "/Users/rodrigo.fernandes/.config/ddtool" = "write"
@@ -39,7 +40,6 @@ description = "Read most files, write selected dev roots, allow network, keep se
 "/Users/rodrigo.fernandes/Downloads" = true
 "/tmp" = true
 "/private/tmp" = true
-"/private/var/tmp" = true
 
 [permissions.datadog-dev.filesystem.":workspace_roots"]
 "." = "write"
