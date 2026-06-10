@@ -278,7 +278,12 @@ if callback_url:
     managed_root_keys.append("mcp_oauth_callback_url")
 managed_root_keys.extend(["approval_policy", "sandbox_mode", "default_permissions"])
 managed_root_keys.extend(codex_settings_root_keys(CODEX_SETTINGS))
-managed_table_prefixes = {"sandbox_workspace_write", "permissions.read-all-write-selected", "permissions.datadog-dev"}
+managed_table_prefixes = {
+    "sandbox_workspace_write",
+    "permissions.read-all-write-selected",
+    "permissions.datadog-dev",
+    "permissions.code-factory",
+}
 base = strip_managed_sections(existing, set(servers), managed_root_keys, managed_table_prefixes)
 base = insert_root_settings(base, generate_root_settings(callback_port, callback_url))
 base = insert_block_before_first_table(base, generate_codex_settings_block(CODEX_SETTINGS))

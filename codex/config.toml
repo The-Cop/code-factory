@@ -2,23 +2,30 @@ model = "gpt-5.5"
 plan_mode_reasoning_effort = "xhigh"
 model_reasoning_effort = "xhigh"
 
-approval_policy = "never"
-default_permissions = "datadog-dev"
+sandbox_mode = "danger-full-access"
+
+default_permissions = "code-factory"
 allow_login_shell = true
+approvals_reviewer = "auto_review"
+
+[approval_policy.granular]
+sandbox_approval = false
+rules = true
+mcp_elicitations = true
+request_permissions = true
+skill_approval = true
 
 [shell_environment_policy]
 inherit = "all"
 set = { BROWSER = "/usr/bin/open", TMPDIR = "/tmp", TMP = "/tmp", TEMP = "/tmp" }
 
-[permissions.datadog-dev]
+[permissions.code-factory]
 description = "Read most files, write selected dev roots, allow network, keep sensitive dirs blocked."
 
-[permissions.datadog-dev.filesystem]
+[permissions.code-factory.filesystem]
 ":root" = "read"
 "/Users/rodrigo.fernandes/.aws" = "deny"
 "/Users/rodrigo.fernandes/.config/gh" = "deny"
-"/Users/rodrigo.fernandes/.ssh" = "deny"
-"/Users/rodrigo.fernandes/.ssh/known_hosts" = "write"
 
 # OIDC / Datadog auth caches. Keep these narrow.
 "/Users/rodrigo.fernandes/.config/ddtool" = "write"
@@ -32,7 +39,7 @@ description = "Read most files, write selected dev roots, allow network, keep se
 # Example only:
 # "/private/var/tmp/_bazel_rodrigo.fernandes" = "write"
 
-[permissions.datadog-dev.workspace_roots]
+[permissions.code-factory.workspace_roots]
 "/Users/rodrigo.fernandes/docs" = true
 "/Users/rodrigo.fernandes/dev" = true
 "/Users/rodrigo.fernandes/dd" = true
@@ -40,15 +47,16 @@ description = "Read most files, write selected dev roots, allow network, keep se
 "/Users/rodrigo.fernandes/Downloads" = true
 "/tmp" = true
 "/private/tmp" = true
+"/var/folders" = true
 
-[permissions.datadog-dev.filesystem.":workspace_roots"]
+[permissions.code-factory.filesystem.":workspace_roots"]
 "." = "write"
 
-[permissions.datadog-dev.network]
+[permissions.code-factory.network]
 enabled = true
 mode = "full"
 
-[permissions.datadog-dev.network.domains]
+[permissions.code-factory.network.domains]
 "*" = "allow"
 
 [projects."/Users/rodrigo.fernandes/dev"]

@@ -31,6 +31,12 @@ description = "stale profile that should be replaced"
 [permissions.datadog-dev.filesystem]
 "/tmp/stale-codex-permissions" = "write"
 
+[permissions.code-factory]
+description = "stale profile that should be replaced"
+
+[permissions.code-factory.filesystem]
+"/tmp/stale-code-factory-permissions" = "write"
+
 [permissions.read-all-write-selected]
 description = "legacy managed profile that should be removed"
 
@@ -59,26 +65,34 @@ required = [
     "# --- End Codex Settings ---",
     "# --- MCP Servers (managed by code-factory from mcp.json) ---",
     "# --- End MCP Servers ---",
-    'approval_policy = "never"',
-    'default_permissions = "datadog-dev"',
+    'sandbox_mode = "danger-full-access"',
+    'default_permissions = "code-factory"',
     'allow_login_shell = true',
+    'approvals_reviewer = "auto_review"',
+    "[approval_policy.granular]",
+    "sandbox_approval = false",
+    "rules = true",
+    "mcp_elicitations = true",
+    "request_permissions = true",
+    "skill_approval = true",
     "[shell_environment_policy]",
     'inherit = "all"',
     'set = { BROWSER = "/usr/bin/open", TMPDIR = "/tmp", TMP = "/tmp", TEMP = "/tmp" }',
-    "[permissions.datadog-dev]",
-    "[permissions.datadog-dev.filesystem]",
+    "[permissions.code-factory]",
+    "[permissions.code-factory.filesystem]",
     '":root" = "read"',
     '"/Users/rodrigo.fernandes/.aws" = "deny"',
     '"/Users/rodrigo.fernandes/.config/ddtool" = "write"',
-    "[permissions.datadog-dev.workspace_roots]",
+    "[permissions.code-factory.workspace_roots]",
     '"/Users/rodrigo.fernandes/dev" = true',
     '"/tmp" = true',
-    '[permissions.datadog-dev.filesystem.":workspace_roots"]',
+    '"/var/folders" = true',
+    '[permissions.code-factory.filesystem.":workspace_roots"]',
     '"." = "write"',
-    "[permissions.datadog-dev.network]",
+    "[permissions.code-factory.network]",
     'enabled = true',
     'mode = "full"',
-    "[permissions.datadog-dev.network.domains]",
+    "[permissions.code-factory.network.domains]",
     '"*" = "allow"',
     "[mcp_servers.atlassian]",
     'default_tools_approval_mode = "auto"',
@@ -92,8 +106,8 @@ if missing:
     raise SystemExit(f"missing expected Codex config entries: {missing}")
 
 singletons = [
-    "approval_policy",
     "default_permissions",
+    "sandbox_mode",
     "mcp_oauth_callback_port",
     "mcp_oauth_callback_url",
 ]
@@ -108,14 +122,27 @@ except ModuleNotFoundError:
     import tomli as tomllib
 
 data = tomllib.loads(content)
-if "sandbox_mode" in data:
-    raise SystemExit("legacy sandbox_mode should be removed when default_permissions is active")
+if data.get("sandbox_mode") != "danger-full-access":
+    raise SystemExit("sandbox_mode must be danger-full-access")
 
-if data.get("approval_policy") != "never":
-    raise SystemExit("approval_policy must be never")
+if data.get("default_permissions") != "code-factory":
+    raise SystemExit("default_permissions must select code-factory")
 
-if data.get("default_permissions") != "datadog-dev":
-    raise SystemExit("default_permissions must select datadog-dev")
+if data.get("approvals_reviewer") != "auto_review":
+    raise SystemExit("approvals_reviewer must be auto_review")
+
+granular_approvals = data.get("approval_policy", {}).get("granular", {})
+expected_granular_approvals = {
+    "sandbox_approval": False,
+    "rules": True,
+    "mcp_elicitations": True,
+    "request_permissions": True,
+    "skill_approval": True,
+}
+for key, expected in expected_granular_approvals.items():
+    actual = granular_approvals.get(key)
+    if actual is not expected:
+        raise SystemExit(f"approval_policy.granular.{key}: expected {expected}, got {actual}")
 
 shell_environment_policy = data.get("shell_environment_policy", {})
 if "sandbox_mode" in shell_environment_policy:
@@ -136,20 +163,21 @@ for key, expected in expected_environment.items():
 if re.search(r"(?m)^\[sandbox_workspace_write\]\s*$", content):
     raise SystemExit("legacy [sandbox_workspace_write] table should be removed")
 
-if "read-all-write-selected" in data.get("permissions", {}):
+permissions = data.get("permissions", {})
+if "read-all-write-selected" in permissions:
     raise SystemExit("legacy permissions.read-all-write-selected table should be removed")
+if "datadog-dev" in permissions:
+    raise SystemExit("legacy permissions.datadog-dev table should be removed")
 
-profile = data.get("permissions", {}).get("datadog-dev")
+profile = permissions.get("code-factory")
 if not profile:
-    raise SystemExit("permissions.datadog-dev profile is missing")
+    raise SystemExit("permissions.code-factory profile is missing")
 
 filesystem = profile.get("filesystem", {})
 expected_filesystem = {
     ":root": "read",
     "/Users/rodrigo.fernandes/.aws": "deny",
     "/Users/rodrigo.fernandes/.config/gh": "deny",
-    "/Users/rodrigo.fernandes/.ssh": "deny",
-    "/Users/rodrigo.fernandes/.ssh/known_hosts": "write",
     "/Users/rodrigo.fernandes/.config/ddtool": "write",
     "/Users/rodrigo.fernandes/.config/datadog": "write",
     "/Users/rodrigo.fernandes/.vault-token": "write",
@@ -168,6 +196,7 @@ for root in [
     "/Users/rodrigo.fernandes/Downloads",
     "/tmp",
     "/private/tmp",
+    "/var/folders",
 ]:
     if workspace_roots.get(root) is not True:
         raise SystemExit(f"workspace root {root} must be enabled")
@@ -178,11 +207,11 @@ if workspace_filesystem.get(".") != "write":
 
 network = profile.get("network", {})
 if network.get("enabled") is not True:
-    raise SystemExit("datadog-dev network must be enabled")
+    raise SystemExit("code-factory network must be enabled")
 if network.get("mode") != "full":
-    raise SystemExit("datadog-dev network mode must be full")
+    raise SystemExit("code-factory network mode must be full")
 if network.get("domains", {}).get("*") != "allow":
-    raise SystemExit("datadog-dev network must allow all domains")
+    raise SystemExit("code-factory network must allow all domains")
 
 mcp_servers = data.get("mcp_servers", {})
 for name in [
@@ -217,7 +246,7 @@ PY
 
 ALLOWED_WRITE="/tmp/code-factory-codex-permissions-allowed-$$"
 SANDBOX_PROBE_LOG="$TMP_DIR/sandbox-probe.log"
-if ! CODEX_HOME="$TMP_DIR" codex sandbox --permissions-profile datadog-dev --include-managed-config -- true 2>"$SANDBOX_PROBE_LOG"; then
+if ! CODEX_HOME="$TMP_DIR" codex sandbox --permissions-profile code-factory --include-managed-config -- true 2>"$SANDBOX_PROBE_LOG"; then
     if grep -q "sandbox_apply: Operation not permitted" "$SANDBOX_PROBE_LOG"; then
         echo "  SKIP  Codex sandbox permission probes (sandbox-exec unavailable)"
         echo "  OK  Codex managed config"
@@ -228,10 +257,10 @@ if ! CODEX_HOME="$TMP_DIR" codex sandbox --permissions-profile datadog-dev --inc
     exit 1
 fi
 
-CODEX_HOME="$TMP_DIR" codex sandbox --permissions-profile datadog-dev --include-managed-config -- sh -c 'touch "$1" && rm "$1"' sh "$ALLOWED_WRITE"
+CODEX_HOME="$TMP_DIR" codex sandbox --permissions-profile code-factory --include-managed-config -- sh -c 'touch "$1" && rm "$1"' sh "$ALLOWED_WRITE"
 
 DENIED_WRITE="/Users/rodrigo.fernandes/code-factory-codex-permissions-denied-$$"
-if CODEX_HOME="$TMP_DIR" codex sandbox --permissions-profile datadog-dev --include-managed-config -- sh -c 'touch "$1"' sh "$DENIED_WRITE" 2>"$TMP_DIR/denied-write.log"; then
+if CODEX_HOME="$TMP_DIR" codex sandbox --permissions-profile code-factory --include-managed-config -- sh -c 'touch "$1"' sh "$DENIED_WRITE" 2>"$TMP_DIR/denied-write.log"; then
     rm -f "$DENIED_WRITE"
     echo "write outside managed roots unexpectedly succeeded" >&2
     exit 1
