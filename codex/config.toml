@@ -37,6 +37,10 @@ description = "Read most files, write selected dev roots, allow network, keep se
 
 # Bazel cache: bzl/bazel writes build artifacts here.
 "/Users/rodrigo.fernandes/.cache/bazel" = "write"
+"/Users/rodrigo.fernandes/Library/Caches/bazel" = "write"
+
+# SSH known_hosts: git fetch updates this file; blocking it causes noisy warnings.
+"/Users/rodrigo.fernandes/.ssh/known_hosts" = "write"
 
 [permissions.code-factory.workspace_roots]
 "/Users/rodrigo.fernandes/docs" = true
