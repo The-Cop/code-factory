@@ -50,6 +50,7 @@ description = "Read most files, write selected dev roots, allow network, keep se
 "/Users/rodrigo.fernandes/Downloads" = true
 "/tmp" = true
 "/private/tmp" = true
+"/private/var/tmp/" = true
 "/var/folders" = true
 
 [permissions.code-factory.filesystem.":workspace_roots"]
