@@ -45,6 +45,7 @@ description = "Read most files, write selected dev roots, allow network, keep se
 [permissions.code-factory.workspace_roots]
 "/Users/rodrigo.fernandes/docs" = true
 "/Users/rodrigo.fernandes/dev" = true
+"/Users/rodrigo.fernandes/worktrees" = true
 "/Users/rodrigo.fernandes/dd" = true
 "/Users/rodrigo.fernandes/go" = true
 "/Users/rodrigo.fernandes/Downloads" = true
@@ -64,6 +65,9 @@ mode = "full"
 "*" = "allow"
 
 [projects."/Users/rodrigo.fernandes/dev"]
+trust_level = "trusted"
+
+[projects."/Users/rodrigo.fernandes/worktrees"]
 trust_level = "trusted"
 
 [projects."/Users/rodrigo.fernandes/dd"]
