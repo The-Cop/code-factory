@@ -19,50 +19,50 @@ skill_approval = true
 inherit = "all"
 set = { BROWSER = "/usr/bin/open", TMPDIR = "/tmp", TMP = "/tmp", TEMP = "/tmp" }
 
-[permissions.code-factory]
-description = "Read most files, write selected dev roots, allow network, keep sensitive dirs blocked."
+# [permissions.code-factory]
+# description = "Read most files, write selected dev roots, allow network, keep sensitive dirs blocked."
 
-[permissions.code-factory.filesystem]
-":root" = "read"
-"/Users/rodrigo.fernandes/.aws" = "deny"
-"/Users/rodrigo.fernandes/.config/gh" = "deny"
+# [permissions.code-factory.filesystem]
+# ":root" = "read"
+# "/Users/rodrigo.fernandes/.aws" = "deny"
+# "/Users/rodrigo.fernandes/.config/gh" = "deny"
 
-# OIDC / Datadog auth caches. Keep these narrow.
-"/Users/rodrigo.fernandes/.config/ddtool" = "write"
-"/Users/rodrigo.fernandes/.config/datadog" = "write"
-"/Users/rodrigo.fernandes/.vault-token" = "write"
+# # OIDC / Datadog auth caches. Keep these narrow.
+# "/Users/rodrigo.fernandes/.config/ddtool" = "write"
+# "/Users/rodrigo.fernandes/.config/datadog" = "write"
+# "/Users/rodrigo.fernandes/.vault-token" = "write"
 
-# Docker credential helpers: ddtool docker install-helper writes credHelpers to config.json.
-"/Users/rodrigo.fernandes/.docker" = "write"
+# # Docker credential helpers: ddtool docker install-helper writes credHelpers to config.json.
+# "/Users/rodrigo.fernandes/.docker" = "write"
 
-# Bazel cache: bzl/bazel writes build artifacts here.
-"/Users/rodrigo.fernandes/.cache/bazel" = "write"
-"/Users/rodrigo.fernandes/Library/Caches/bazel" = "write"
+# # Bazel cache: bzl/bazel writes build artifacts here.
+# "/Users/rodrigo.fernandes/.cache/bazel" = "write"
+# "/Users/rodrigo.fernandes/Library/Caches/bazel" = "write"
 
-# SSH known_hosts: git fetch updates this file; blocking it causes noisy warnings.
-"/Users/rodrigo.fernandes/.ssh/known_hosts" = "write"
+# # SSH known_hosts: git fetch updates this file; blocking it causes noisy warnings.
+# "/Users/rodrigo.fernandes/.ssh/known_hosts" = "write"
 
-[permissions.code-factory.workspace_roots]
-"/Users/rodrigo.fernandes/docs" = true
-"/Users/rodrigo.fernandes/dev" = true
-"/Users/rodrigo.fernandes/worktrees" = true
-"/Users/rodrigo.fernandes/dd" = true
-"/Users/rodrigo.fernandes/go" = true
-"/Users/rodrigo.fernandes/Downloads" = true
-"/tmp" = true
-"/private/tmp" = true
-"/private/var/tmp/" = true
-"/var/folders" = true
+# [permissions.code-factory.workspace_roots]
+# "/Users/rodrigo.fernandes/docs" = true
+# "/Users/rodrigo.fernandes/dev" = true
+# "/Users/rodrigo.fernandes/worktrees" = true
+# "/Users/rodrigo.fernandes/dd" = true
+# "/Users/rodrigo.fernandes/go" = true
+# "/Users/rodrigo.fernandes/Downloads" = true
+# "/tmp" = true
+# "/private/tmp" = true
+# "/private/var/tmp/" = true
+# "/var/folders" = true
 
-[permissions.code-factory.filesystem.":workspace_roots"]
-"." = "write"
+# [permissions.code-factory.filesystem.":workspace_roots"]
+# "." = "write"
 
-[permissions.code-factory.network]
-enabled = true
-mode = "full"
+# [permissions.code-factory.network]
+# enabled = true
+# mode = "full"
 
-[permissions.code-factory.network.domains]
-"*" = "allow"
+# [permissions.code-factory.network.domains]
+# "*" = "allow"
 
 [projects."/Users/rodrigo.fernandes/dev"]
 trust_level = "trusted"

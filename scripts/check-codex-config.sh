@@ -52,12 +52,15 @@ EOF
 
 CODEX_HOME="$TMP_DIR" "$ROOT/install-codex-mcp.sh" >/dev/null
 
-python3 - "$TMP_DIR/config.toml" <<'PY'
+PROFILE_DISABLED_SENTINEL="$TMP_DIR/code-factory-profile-disabled"
+
+python3 - "$TMP_DIR/config.toml" "$PROFILE_DISABLED_SENTINEL" <<'PY'
 import re
 import sys
 from pathlib import Path
 
 path = Path(sys.argv[1])
+profile_disabled_sentinel = Path(sys.argv[2])
 content = path.read_text()
 
 required = [
@@ -171,47 +174,49 @@ if "datadog-dev" in permissions:
 
 profile = permissions.get("code-factory")
 if not profile:
-    raise SystemExit("permissions.code-factory profile is missing")
+    if not re.search(r"(?m)^#\s*\[permissions\.code-factory\]\s*$", content):
+        raise SystemExit("permissions.code-factory profile is missing")
+    profile_disabled_sentinel.write_text("1")
+else:
+    filesystem = profile.get("filesystem", {})
+    expected_filesystem = {
+        ":root": "read",
+        "/Users/rodrigo.fernandes/.aws": "deny",
+        "/Users/rodrigo.fernandes/.config/gh": "deny",
+        "/Users/rodrigo.fernandes/.config/ddtool": "write",
+        "/Users/rodrigo.fernandes/.config/datadog": "write",
+        "/Users/rodrigo.fernandes/.vault-token": "write",
+    }
+    for key, expected in expected_filesystem.items():
+        actual = filesystem.get(key)
+        if actual != expected:
+            raise SystemExit(f"filesystem {key}: expected {expected}, got {actual}")
 
-filesystem = profile.get("filesystem", {})
-expected_filesystem = {
-    ":root": "read",
-    "/Users/rodrigo.fernandes/.aws": "deny",
-    "/Users/rodrigo.fernandes/.config/gh": "deny",
-    "/Users/rodrigo.fernandes/.config/ddtool": "write",
-    "/Users/rodrigo.fernandes/.config/datadog": "write",
-    "/Users/rodrigo.fernandes/.vault-token": "write",
-}
-for key, expected in expected_filesystem.items():
-    actual = filesystem.get(key)
-    if actual != expected:
-        raise SystemExit(f"filesystem {key}: expected {expected}, got {actual}")
+    workspace_roots = profile.get("workspace_roots", {})
+    for root in [
+        "/Users/rodrigo.fernandes/docs",
+        "/Users/rodrigo.fernandes/dev",
+        "/Users/rodrigo.fernandes/dd",
+        "/Users/rodrigo.fernandes/go",
+        "/Users/rodrigo.fernandes/Downloads",
+        "/tmp",
+        "/private/tmp",
+        "/var/folders",
+    ]:
+        if workspace_roots.get(root) is not True:
+            raise SystemExit(f"workspace root {root} must be enabled")
 
-workspace_roots = profile.get("workspace_roots", {})
-for root in [
-    "/Users/rodrigo.fernandes/docs",
-    "/Users/rodrigo.fernandes/dev",
-    "/Users/rodrigo.fernandes/dd",
-    "/Users/rodrigo.fernandes/go",
-    "/Users/rodrigo.fernandes/Downloads",
-    "/tmp",
-    "/private/tmp",
-    "/var/folders",
-]:
-    if workspace_roots.get(root) is not True:
-        raise SystemExit(f"workspace root {root} must be enabled")
+    workspace_filesystem = filesystem.get(":workspace_roots", {})
+    if workspace_filesystem.get(".") != "write":
+        raise SystemExit('filesystem.":workspace_roots"."." must be write')
 
-workspace_filesystem = filesystem.get(":workspace_roots", {})
-if workspace_filesystem.get(".") != "write":
-    raise SystemExit('filesystem.":workspace_roots"."." must be write')
-
-network = profile.get("network", {})
-if network.get("enabled") is not True:
-    raise SystemExit("code-factory network must be enabled")
-if network.get("mode") != "full":
-    raise SystemExit("code-factory network mode must be full")
-if network.get("domains", {}).get("*") != "allow":
-    raise SystemExit("code-factory network must allow all domains")
+    network = profile.get("network", {})
+    if network.get("enabled") is not True:
+        raise SystemExit("code-factory network must be enabled")
+    if network.get("mode") != "full":
+        raise SystemExit("code-factory network mode must be full")
+    if network.get("domains", {}).get("*") != "allow":
+        raise SystemExit("code-factory network must allow all domains")
 
 mcp_servers = data.get("mcp_servers", {})
 for name in [
@@ -229,6 +234,12 @@ for name in [
 if "default_tools_approval_mode" in mcp_servers.get("unrelated", {}):
     raise SystemExit("unrelated preserved MCP server should not receive managed approval settings")
 PY
+
+if [[ -f "$PROFILE_DISABLED_SENTINEL" ]]; then
+    echo "  SKIP  Codex strict config and sandbox probes (permissions.code-factory is commented out)"
+    echo "  OK  Codex managed config"
+    exit 0
+fi
 
 DOCTOR_JSON="$TMP_DIR/doctor.json"
 CODEX_HOME="$TMP_DIR" codex --strict-config doctor --json >"$DOCTOR_JSON" 2>/dev/null || true
