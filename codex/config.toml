@@ -24,8 +24,6 @@ description = "Read most files, write selected dev roots, allow network, keep se
 
 [permissions.code-factory.filesystem]
 ":root" = "read"
-"/Users/rodrigo.fernandes/.aws" = "deny"
-"/Users/rodrigo.fernandes/.config/gh" = "deny"
 
 # OIDC / Datadog auth caches. Keep these narrow.
 "/Users/rodrigo.fernandes/.config/ddtool" = "write"

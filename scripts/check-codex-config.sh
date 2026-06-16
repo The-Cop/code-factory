@@ -84,7 +84,6 @@ required = [
     "[permissions.code-factory]",
     "[permissions.code-factory.filesystem]",
     '":root" = "read"',
-    '"/Users/rodrigo.fernandes/.aws" = "deny"',
     '"/Users/rodrigo.fernandes/.config/ddtool" = "write"',
     "[permissions.code-factory.workspace_roots]",
     '"/Users/rodrigo.fernandes/dev" = true',
@@ -181,8 +180,6 @@ else:
     filesystem = profile.get("filesystem", {})
     expected_filesystem = {
         ":root": "read",
-        "/Users/rodrigo.fernandes/.aws": "deny",
-        "/Users/rodrigo.fernandes/.config/gh": "deny",
         "/Users/rodrigo.fernandes/.config/ddtool": "write",
         "/Users/rodrigo.fernandes/.config/datadog": "write",
         "/Users/rodrigo.fernandes/.vault-token": "write",
