@@ -63,6 +63,11 @@ path = Path(sys.argv[1])
 profile_disabled_sentinel = Path(sys.argv[2])
 content = path.read_text()
 
+# If the permissions.code-factory profile is commented out, skip full validation.
+if re.search(r"(?m)^#\s*\[permissions\.code-factory\]\s*$", content):
+    profile_disabled_sentinel.write_text("1")
+    sys.exit(0)
+
 required = [
     "# --- Codex Settings (managed by code-factory from codex/config.toml) ---",
     "# --- End Codex Settings ---",
