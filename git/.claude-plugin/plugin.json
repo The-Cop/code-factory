@@ -1,6 +1,6 @@
 {
   "name": "git",
-  "version": "0.8.14",
+  "version": "0.8.15",
   "description": "Git workflow skills: structured commits, atomic commit validation, fixup commits, PR creation, PR review feedback resolution, branch management, isolated worktrees, and merge conflict resolution",
   "author": {
     "name": "Rodrigo Fernandes",

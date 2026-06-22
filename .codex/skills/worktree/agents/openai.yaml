@@ -1,4 +1,4 @@
 interface:
   display_name: "Worktree"
-  short_description: "Use when the user wants to start a new feature in an isolated git worktree."
-  default_prompt: "Use $worktree to start a new feature in an isolated git worktree."
+  short_description: "Use when the user wants to start a new feature in an isolated git worktree,."
+  default_prompt: "Use $worktree to start a new feature in an isolated git worktree,."
