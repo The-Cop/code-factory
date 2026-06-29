@@ -20,6 +20,22 @@ Before executing any task in a session:
 - Probe MCP servers that the task will use (atlassian, slack, datadog-google-workspace, etc.) with a cheap read call to confirm they are reachable. Report any that fail.
 - Skip the pre-warm only when the request is trivial and obviously local (read a file, answer a question from context).
 
+## GitHub Authentication
+
+Two GitHub accounts are in use:
+
+- `rtfpessoa` — personal account, used for the `datadog` org
+- `rodrigo-fernandes_ddog` — work account, used for the `ddoghq` org
+
+If a `gh` command fails with a permissions error (403, "not authorized", "resource not accessible"), switch accounts with:
+
+```bash
+gh auth switch --user rtfpessoa        # for datadog org
+gh auth switch --user rodrigo-fernandes_ddog  # for ddoghq org
+```
+
+Then retry the command. Do not ask the user to fix auth manually unless `gh auth switch` also fails.
+
 ## Prefer native tools over Bash CLIs
 
 Use native Claude Code tools instead of Bash CLIs whenever possible:
