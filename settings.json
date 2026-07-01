@@ -148,7 +148,7 @@
       "Bash(npm install -g *)",
       "Bash(defaults write *)"
     ],
-    "defaultMode": "plan",
+    "defaultMode": "auto",
     "additionalDirectories": [
       "/Users/rodrigo.fernandes/go",
       "/Users/rodrigo.fernandes/dev",
@@ -162,6 +162,7 @@
       "/private/var/tmp"
     ]
   },
+  "model": "sonnet[1m]",
   "enabledMcpjsonServers": [
     "atlassian",
     "datadog-google-workspace",
