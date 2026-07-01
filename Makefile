@@ -212,7 +212,7 @@ check-codex-config: ## Validate managed Codex config generation
 check-codex-rules: ## Validate managed Codex execpolicy rules
 	@bash ./scripts/check-codex-rules.sh
 
-sync-pi: ## Sync skills, prompts, agents, and MCP extension to Pi config directory
+sync-pi: ## Sync skills, prompts, agents, extensions, and MCP config to Pi config directory
 	@./sync-pi.sh
 
 check-pi-sync: ## Validate Pi sync is up-to-date

@@ -24,7 +24,7 @@ sync-pi.sh                        # Regenerates .pi/ from plugin sources
 rules/                            # Claude Code rules linked into ~/.claude/rules/ by init.sh
 hooks/                            # Claude Code hook scripts linked by init.sh
 .githooks/                        # Git hooks linked into .git/hooks by init.sh
-pi-extensions/                    # Hand-written pi.dev TypeScript extensions (mcp-wrapper)
+pi-extensions/                    # Hand-written pi.dev TypeScript extensions (ask-question)
 .opencode/                        # Generated OpenCode assets (do not edit directly)
 .codex/                           # Generated Codex assets (do not edit directly)
 .pi/                              # Generated Pi assets (do not edit directly)

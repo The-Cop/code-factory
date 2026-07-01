@@ -150,14 +150,10 @@ gh search prs --reviewed-by={github_username} --created={PERIOD_START}..{PERIOD_
 ### 3h: Jira Tickets
 
 ```
-atlassian(
-  action = "call_tool",
-  tool = "searchJiraIssuesUsingJql",
-  args = {
-    jql = "assignee = '<jira_display_name_or_email>' AND updated >= 'PERIOD_START' AND updated <= 'PERIOD_END' ORDER BY updated DESC",
-    limit = 50
-  }
-)
+mcp({
+  tool: "atlassian_searchJiraIssuesUsingJql",
+  args: "{\"jql\":\"assignee = '<jira_display_name_or_email>' AND updated >= 'PERIOD_START' AND updated <= 'PERIOD_END' ORDER BY updated DESC\",\"limit\":50}"
+})
 ```
 
 Note tickets completed (Done/Resolved), in progress, and any blockers.
@@ -165,14 +161,10 @@ Note tickets completed (Done/Resolved), in progress, and any blockers.
 ### 3i: Confluence Pages
 
 ```
-atlassian(
-  action = "call_tool",
-  tool = "searchConfluenceUsingCql",
-  args = {
-    cql = "contributor = '<email>' AND lastmodified >= 'PERIOD_START' AND lastmodified <= 'PERIOD_END' AND type = page",
-    limit = 20
-  }
-)
+mcp({
+  tool: "atlassian_searchConfluenceUsingCql",
+  args: "{\"cql\":\"contributor = '<email>' AND lastmodified >= 'PERIOD_START' AND lastmodified <= 'PERIOD_END' AND type = page\",\"limit\":20}"
+})
 ```
 
 ## Step 4: Ask for Context

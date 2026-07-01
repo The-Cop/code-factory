@@ -116,10 +116,10 @@ A resuming agent reads the current plan, not the original plan plus unstructured
 | Service | If Unavailable | Action |
 |---------|---------------|--------|
 | Confluence MCP | Search returns error | Continue with web-only research, log warning |
-| Context7/DeepWiki | Not configured | Fall back to WebSearch for library docs |
+| Context7/DeepWiki | Not configured | Fall back to web_search for library docs |
 | Git remote | Push fails | Save state, warn user, do not block DONE |
 | CI | Timeout or unavailable | Proceed to PR, note CI pending in PR description |
-| WebSearch/WebFetch | Network error | Proceed with codebase-only research, flag gaps |
+| web_search | Network error | Proceed with codebase-only research, flag gaps |
 
 ## Phase-Level Dispatch Model
 

@@ -1,7 +1,7 @@
 ---
 name: planner
 description: "Plan authoring agent. Converts research into actionable execution plans with milestones, tasks, and validation strategies. References both local codebase and external findings."
-tools: ["Read", "Grep", "Glob", "atlassian", "atlassian"]
+tools: ["Read", "Grep", "Glob", "mcp"]
 memory: "project"
 ---
 
@@ -364,7 +364,7 @@ When creating the plan, draw from:
 - Test patterns to follow — cite the specific test file and structure to mirror
 
 **Confluence (if not already in research context):**
-- Search for additional context: `atlassian(action="call_tool", tool="searchConfluenceUsingCql", args={ cql="text ~ '<feature keywords>'" })`
+- Search for additional context: `mcp({ tool: "atlassian_searchConfluenceUsingCql", args: "{\"cql\":\"text ~ '<feature keywords>'\"}" })`
 - Design decisions that affect implementation
 - Team-specific requirements or constraints
 

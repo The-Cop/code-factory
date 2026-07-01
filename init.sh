@@ -9,8 +9,9 @@
 #   4. Runs sync-opencode.sh to generate OpenCode assets in the repo.
 #   5. Symlinks .opencode/{skills,agents,commands} into ~/.config/opencode/.
 #   6. Installs managed Codex config, skills, agents, and execpolicy rules.
-#   7. Installs or updates the OpenSpec CLI.
-#   8. Updates Claude Code CLI and all installed marketplace plugins.
+#   7. Installs managed Pi skills, prompts, agents, extensions, MCP config, and packages.
+#   8. Installs or updates the OpenSpec CLI.
+#   9. Updates Claude Code CLI and all installed marketplace plugins.
 #
 # Behavior:
 #   - If the destination is an existing symlink, it is removed and re-created.
@@ -481,10 +482,10 @@ fi
 
 # Generate Pi assets in the repo
 echo ""
-echo "Syncing Pi skills, prompts, agents, and MCP extension..."
+echo "Syncing Pi skills, prompts, agents, extensions, and MCP config..."
 "$SCRIPT_DIR/sync-pi.sh"
 
-# Propagate .pi/{skills,prompts,agents,extensions} to ~/.pi/agent/
+# Propagate .pi/{skills,prompts,agents,extensions,mcp.json} to ~/.pi/agent/
 echo ""
 echo "Linking to ~/.pi/agent/..."
 
@@ -548,6 +549,42 @@ if [[ -d "$PI_LOCAL_DIR/agents" ]]; then
             echo "  LINK  agents/$agent_name"
         fi
     done < <(find "$PI_LOCAL_DIR/agents" -name "*.md" | sort)
+fi
+
+# Symlink Pi MCP adapter config
+if [[ -f "$PI_LOCAL_DIR/mcp.json" ]]; then
+    mkdir -p "$PI_GLOBAL_DIR"
+    pi_mcp_src="$PI_LOCAL_DIR/mcp.json"
+    pi_mcp_dest="$PI_GLOBAL_DIR/mcp.json"
+    if [[ -L "$pi_mcp_dest" ]]; then
+        rm "$pi_mcp_dest"
+    elif [[ -f "$pi_mcp_dest" && ! -s "$pi_mcp_dest" ]]; then
+        rm "$pi_mcp_dest"
+    elif [[ -f "$pi_mcp_dest" ]] && cmp -s "$pi_mcp_dest" "$pi_mcp_src"; then
+        rm "$pi_mcp_dest"
+    elif [[ -f "$pi_mcp_dest" ]]; then
+        backup="${pi_mcp_dest}.bak.$(date +%Y%m%d%H%M%S)"
+        if mv "$pi_mcp_dest" "$backup"; then
+            echo "  WARN  $pi_mcp_dest differed from source, backed up to $backup and relinking"
+        else
+            errors+=("$pi_mcp_src -> $pi_mcp_dest: dest differed from source and backup failed")
+            echo "  FAIL  could not back up $pi_mcp_dest, skipping"
+            pi_mcp_dest=""
+        fi
+    elif [[ -e "$pi_mcp_dest" ]]; then
+        errors+=("$pi_mcp_src -> $pi_mcp_dest: destination already exists (not a regular file)")
+        echo "  FAIL  $pi_mcp_dest already exists and is not a regular file, cannot link"
+        pi_mcp_dest=""
+    fi
+    if [[ -n "$pi_mcp_dest" ]]; then
+        if ! ln -s "$pi_mcp_src" "$pi_mcp_dest"; then
+            errors+=("$pi_mcp_src -> $pi_mcp_dest: ln -s failed")
+            echo "  FAIL  mcp.json"
+        else
+            pi_new_manifest+=("$pi_mcp_dest")
+            echo "  LINK  mcp.json"
+        fi
+    fi
 fi
 
 # Symlink each Pi extension directory
@@ -615,6 +652,33 @@ fi
 if ! command -v pi &>/dev/null; then
     echo "  SKIP  pi CLI still not available"
 else
+    # Remove community packages replaced by the current managed Pi setup.
+    PI_DEPRECATED_NPM_PACKAGES=(
+        "pi-rtk"
+        "pi-webfetch-to-markdown"
+    )
+    for pkg in "${PI_DEPRECATED_NPM_PACKAGES[@]}"; do
+        if pi remove "npm:$pkg" >/dev/null 2>&1; then
+            echo "  OK  removed deprecated $pkg"
+        else
+            echo "  OK  deprecated $pkg not installed"
+        fi
+    done
+
+    # Community packages: pin exact versions so bootstrap is repeatable.
+    PI_NPM_PACKAGES=(
+        "pi-subagents@0.31.1"
+        "pi-mcp-adapter@2.10.0"
+        "pi-web-search@1.3.0"
+    )
+    for pkg in "${PI_NPM_PACKAGES[@]}"; do
+        if pi install "npm:$pkg" 2>&1 | tail -1; then
+            echo "  OK  $pkg"
+        else
+            echo "  WARN  $pkg install failed"
+        fi
+    done
+
     # Datadog packages: clone-or-update the marketplace repo, then install by local path.
     # The repo root is intentionally a catalog, not a pi package -- each subdir under
     # packages/ must be installed individually.

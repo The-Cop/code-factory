@@ -300,7 +300,7 @@ This grounds downstream phases in actual content rather than link-only reference
 | Source | Detection | Action |
 |-|-|-|
 | GitHub repos | `github.com/<owner>/<repo>` (no `/pull/`, `/issues/`, etc.) | `git clone --depth 1` to `/tmp/<repo>`, set as analysis target |
-| URLs (http/https) | Non-repo URLs in feature description | `WebFetch` each, save summary to `CONTEXT/` |
+| URLs (http/https) | Non-repo URLs in feature description | `web_search` each, save summary to `CONTEXT/` |
 | GitHub PRs/issues | `#NNN` or GitHub URL patterns | `gh pr view` or `gh issue view`, save to `CONTEXT/` |
 | Ticket references | JIRA-NNN, PROJ-NNN patterns | CLI fetch if available, save to `CONTEXT/` |
 

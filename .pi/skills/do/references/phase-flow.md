@@ -167,7 +167,7 @@ Tests pass -> /atcommit (remaining) -> git push -> /pr (create PR) -> /pr-fix (v
 - `explorer`: **local codebase** mapping (modules, patterns, conventions)
 - `researcher`: follows a structured research sequence:
   - **Step 0 — Domain Research Evaluation**: determines if the task relies on knowledge outside the codebase (external APIs, file formats, protocols, specs, third-party services)
-  - **Step 1 — External Domain Research** (only if triggered): WebSearch/WebFetch for authoritative sources, edge cases, and non-obvious behaviors BEFORE Confluence
+  - **Step 1 — External Domain Research** (only if triggered): web_search for authoritative sources, edge cases, and non-obvious behaviors BEFORE Confluence
   - **Step 2 — Confluence + General Web Research**: design docs, RFCs, APIs, best practices
 - Output: Context, Assumptions (tagged: [EXTERNAL DOMAIN], [CODEBASE], [TASK DESCRIPTION]), Constraints, Risks, Open Questions
 - **Both sources are mandatory** - do not skip Confluence search

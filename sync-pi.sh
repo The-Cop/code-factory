@@ -1,13 +1,14 @@
 #!/usr/bin/env bash
 #
-# sync-pi.sh -- Generate pi.dev-compatible skills, prompts, agents, and MCP extension.
+# sync-pi.sh -- Generate pi.dev-compatible skills, prompts, agents, extensions, and MCP config.
 #
 # This script:
 #   1. Discovers plugins from .claude-plugin/marketplace.json
 #   2. Copies skills (with body rewrites + stripped frontmatter) to .pi/skills/{name}/SKILL.md
 #   3. Generates .pi/prompts/{name}.md for every user-invocable skill
 #   4. Transforms agent Markdown files to .pi/agents/{name}.md
-#   5. Builds .pi/extensions/mcp-wrapper/ (TS source + servers.json from mcp.json)
+#   5. Copies local Pi extensions from pi-extensions/
+#   6. Generates .pi/mcp.json for pi-mcp-adapter from mcp.json
 #
 # All output stays within the repo (.pi/ directory).
 # Run `make install` to propagate to ~/.pi/agent/.
@@ -30,6 +31,7 @@ SKILLS_DIR="$PI_DIR/skills"
 PROMPTS_DIR="$PI_DIR/prompts"
 AGENTS_DIR="$PI_DIR/agents"
 EXTENSIONS_DIR="$PI_DIR/extensions"
+PI_ADAPTER_CONFIG="$PI_DIR/mcp.json"
 
 CHECK_MODE=false
 if [[ "${1:-}" == "--check" ]]; then
@@ -87,18 +89,20 @@ make_temp_dir() {
     mktemp -d 2>/dev/null || mktemp -d -p /private/tmp
 }
 
-# rewrite_body: apply body-text rewrites in-place (subagent refs, mcp tool names, plugin paths)
+# rewrite_body: apply body-text rewrites in-place (subagent refs, MCP adapter calls, plugin paths)
 rewrite_body() {
     local file="$1"
     python3 - "$file" << 'PYEOF'
+import ast
+import json
 import re
 import sys
 
 path = sys.argv[1]
 
 
-def pi_tool_name(server: str) -> str:
-    return server.replace("-", "_")
+def pi_mcp_tool_name(server: str, tool: str) -> str:
+    return f'{server.replace("-", "_")}_{tool}'
 
 
 def pi_agent_name(name: str) -> str:
@@ -108,6 +112,100 @@ def pi_agent_name(name: str) -> str:
     return {
         "Explore": "explorer",
     }.get(agent, agent)
+
+
+def split_top_level_args(text: str) -> list[str]:
+    parts: list[str] = []
+    current: list[str] = []
+    quote: str | None = None
+    escape = False
+    for char in text:
+        if quote:
+            current.append(char)
+            if escape:
+                escape = False
+            elif char == "\\":
+                escape = True
+            elif char == quote:
+                quote = None
+            continue
+        if char in ("'", '"'):
+            quote = char
+            current.append(char)
+            continue
+        if char == ",":
+            part = "".join(current).strip()
+            if part:
+                parts.append(part)
+            current = []
+            continue
+        current.append(char)
+    part = "".join(current).strip()
+    if part:
+        parts.append(part)
+    return parts
+
+
+def parse_arg_value(raw: str) -> object:
+    value = raw.strip().rstrip(",").strip()
+    if not value:
+        return ""
+    if value in ("true", "false"):
+        return value == "true"
+    if value == "null":
+        return None
+    if re.fullmatch(r"-?\d+", value):
+        return int(value)
+    if re.fullmatch(r"-?\d+\.\d+", value):
+        return float(value)
+    if value[0:1] in ("'", '"') and value[-1:] == value[0]:
+        try:
+            return ast.literal_eval(value)
+        except Exception:
+            return value[1:-1]
+    return value
+
+
+def parse_call_args(args_text: str) -> dict[str, object]:
+    normalized = " ".join(line.strip() for line in args_text.splitlines()).strip()
+    normalized = normalized.strip(",").strip()
+    if not normalized:
+        return {}
+
+    parsed: dict[str, object] = {}
+    for part in split_top_level_args(normalized):
+        match = re.match(r"^([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.+)$", part)
+        if not match:
+            return {"raw": normalized}
+        key, raw_value = match.groups()
+        parsed[key] = parse_arg_value(raw_value)
+    return parsed
+
+
+def render_args_literal(args_text: str) -> str:
+    payload = json.dumps(parse_call_args(args_text), separators=(",", ":"))
+    return json.dumps(payload)
+
+
+def render_mcp_call(
+    indent: str,
+    server: str,
+    tool: str,
+    args_text: str,
+    suffix: str,
+    newline: str,
+    multiline: bool,
+) -> str:
+    tool_name = pi_mcp_tool_name(server, tool)
+    args_literal = render_args_literal(args_text)
+    if multiline:
+        return (
+            f'{indent}mcp({{\n'
+            f'{indent}  tool: "{tool_name}",\n'
+            f'{indent}  args: {args_literal}\n'
+            f'{indent}}}){suffix}{newline}'
+        )
+    return f'{indent}mcp({{ tool: "{tool_name}", args: {args_literal} }}){suffix}{newline}'
 
 
 def rewrite_mcp_call_blocks(text: str) -> str:
@@ -126,48 +224,44 @@ def rewrite_mcp_call_blocks(text: str) -> str:
 
         indent, server, tool, rest = match.groups()
         newline = "\n" if line.endswith("\n") else ""
-        wrapper = pi_tool_name(server)
 
         if ")" in rest:
             args, suffix = rest.split(")", 1)
-            args = args.strip()
-            if args:
-                out.append(f'{indent}{wrapper}(action="call_tool", tool="{tool}", args={{ {args} }}){suffix}{newline}')
-            else:
-                out.append(f'{indent}{wrapper}(action="call_tool", tool="{tool}", args={{}}){suffix}{newline}')
+            out.append(render_mcp_call(indent, server, tool, args, suffix, newline, multiline=False))
             i += 1
             continue
 
-        out.append(f"{indent}{wrapper}(\n")
-        out.append(f'{indent}  action = "call_tool",\n')
-        out.append(f'{indent}  tool = "{tool}",\n')
-        out.append(f"{indent}  args = {{\n")
         i += 1
+        arg_lines = []
+        closing_newline = "\n"
+        suffix = ""
         found_close = False
         while i < len(lines):
             arg_line = lines[i]
-            if arg_line.strip() == ")":
-                line_newline = "\n" if arg_line.endswith("\n") else ""
-                out.append(f"{indent}  }}\n")
-                out.append(f"{indent}){line_newline}")
+            if arg_line.strip().startswith(")"):
+                closing_newline = "\n" if arg_line.endswith("\n") else ""
+                suffix = arg_line.strip()[1:]
                 found_close = True
                 i += 1
                 break
-            out.append(f"{indent}    {arg_line.lstrip()}")
+            arg_lines.append(arg_line)
             i += 1
 
+        out.append(render_mcp_call(indent, server, tool, "".join(arg_lines), suffix, closing_newline, multiline=True))
         if not found_close:
-            out.append(f"{indent}  }}\n")
-            out.append(f"{indent})\n")
+            out.append("\n")
 
     return "".join(out)
 
 
 def rewrite_inline_mcp_call(match: re.Match[str]) -> str:
     server, tool, args = match.groups()
-    args = args.strip()
-    rendered_args = f"{{ {args} }}" if args else "{}"
-    return f'{pi_tool_name(server)}(action="call_tool", tool="{tool}", args={rendered_args})'
+    return render_mcp_call("", server, tool, args, "", "", multiline=False)
+
+
+def rewrite_bare_mcp_tool(match: re.Match[str]) -> str:
+    server, tool = match.groups()
+    return f'mcp({{ tool: "{pi_mcp_tool_name(server, tool)}", args: "{{}}" }})'
 
 
 text = open(path).read()
@@ -179,8 +273,8 @@ text = re.sub(
     text,
 )
 text = re.sub(
-    r'\bmcp__([A-Za-z0-9_-]+)__[A-Za-z0-9_-]+',
-    lambda m: pi_tool_name(m.group(1)),
+    r'\bmcp__([A-Za-z0-9_-]+)__([A-Za-z0-9_-]+)',
+    rewrite_bare_mcp_tool,
     text,
 )
 
@@ -190,6 +284,11 @@ text = text.replace('"Task"', '"subagent"')
 text = text.replace("'Task'", "'subagent'")
 text = text.replace('`Task`', '`subagent`')
 text = text.replace('Task tool', 'subagent tool')
+text = text.replace('WebSearch and WebFetch', 'web_search')
+text = text.replace('WebSearch/WebFetch', 'web_search')
+text = text.replace('WebSearch or WebFetch', 'web_search')
+text = text.replace('WebSearch', 'web_search')
+text = text.replace('WebFetch', 'web_search')
 text = text.replace('AskUserQuestion', 'ask_question')
 text = re.sub(
     r'subagent_type\s*=\s*("[^"]+"|\'[^\']+\'|[A-Za-z0-9_-]+)',
@@ -291,7 +390,10 @@ normalize_agent_frontmatter() {
     local file="$1"
     local tmpfile="${file}.tmp"
     python3 - "$file" "$tmpfile" << 'PYEOF'
-import sys, re
+import ast
+import json
+import re
+import sys
 
 src, dst = sys.argv[1], sys.argv[2]
 lines = open(src).readlines()
@@ -305,6 +407,41 @@ fm_start, fm_end = fence_indices[0], fence_indices[1]
 fm_lines = lines[fm_start + 1 : fm_end]
 body_lines = lines[fm_end:]
 
+
+def normalize_tool_name(tool: str) -> str:
+    if tool.startswith("mcp__"):
+        return "mcp"
+    return {
+        "Task": "subagent",
+        "Agent": "subagent",
+        "AskUserQuestion": "ask_question",
+        "WebSearch": "web_search",
+        "WebFetch": "web_search",
+    }.get(tool, tool)
+
+
+def normalize_tool_list(value: str) -> str:
+    raw = value.strip()
+    if not raw:
+        return raw
+    try:
+        parsed = ast.literal_eval(raw)
+    except Exception:
+        parsed = [piece.strip().strip('"').strip("'") for piece in raw.split(",")]
+    if not isinstance(parsed, list):
+        parsed = [str(parsed)]
+
+    tools: list[str] = []
+    seen: set[str] = set()
+    for item in parsed:
+        tool = normalize_tool_name(str(item).strip())
+        if not tool or tool in seen:
+            continue
+        seen.add(tool)
+        tools.append(tool)
+    return json.dumps(tools)
+
+
 out_fm = []
 skip_continuation = False
 for line in fm_lines:
@@ -315,7 +452,10 @@ for line in fm_lines:
     if m:
         field = m.group(1)
         if field == 'allowed_tools':
-            out_fm.append('tools:' + line[len('allowed_tools:'):])
+            out_fm.append('tools: ' + normalize_tool_list(line[len('allowed_tools:'):]) + '\n')
+            continue
+        if field == 'tools':
+            out_fm.append('tools: ' + normalize_tool_list(line[len('tools:'):]) + '\n')
             continue
         if field == 'hooks':
             skip_continuation = True
@@ -330,34 +470,59 @@ PYEOF
     mv "$tmpfile" "$file"
 }
 
-# generate_mcp_servers_json: emit .pi/extensions/mcp-wrapper/servers.json from
-# mcp.json (HTTP servers only for v1).
-generate_mcp_servers_json() {
+# generate_pi_mcp_config: emit .pi/mcp.json for pi-mcp-adapter from mcp.json.
+# Keep this HTTP-only and proxy-only; no stdio commands, imports, direct tools,
+# or sampling auto-approval are generated by code-factory.
+generate_pi_mcp_config() {
     local out_file="$1"
     python3 - "$MCP_CONFIG" "$out_file" << 'PYEOF'
-import json, sys
+import json
+import os
+import sys
 
 src, dst = sys.argv[1], sys.argv[2]
 data = json.load(open(src))
 
-servers = []
+servers = {}
 for name, cfg in sorted(data.get('mcpServers', {}).items()):
     if cfg.get('type') != 'http':
         continue
-    servers.append({
-        'name': name,
+    server = {
         'url': cfg['url'],
-        'oauth': cfg.get('oauth'),
-    })
+        'lifecycle': 'lazy',
+        'directTools': False,
+    }
+    oauth = cfg.get('oauth')
+    if oauth:
+        server['auth'] = 'oauth'
+        adapter_oauth = {}
+        if oauth.get('clientId'):
+            adapter_oauth['clientId'] = oauth['clientId']
+        if oauth.get('callbackPort'):
+            adapter_oauth['redirectUri'] = f"http://localhost:{oauth['callbackPort']}/callback"
+        if adapter_oauth:
+            server['oauth'] = adapter_oauth
+    servers[name] = server
 
+out = {
+    'settings': {
+        'directTools': False,
+        'idleTimeout': 10,
+        'autoAuth': False,
+        'samplingAutoApprove': False,
+    },
+    'mcpServers': servers,
+}
+
+os.makedirs(os.path.dirname(dst), exist_ok=True)
 with open(dst, 'w') as f:
-    json.dump({'servers': servers}, f, indent=2)
+    json.dump(out, f, indent=2)
     f.write('\n')
 PYEOF
 }
 
 # build_extensions: copy every directory under pi-extensions/ into
-# .pi/extensions/<name>/, then run extension-specific post-steps.
+# .pi/extensions/<name>/.
 build_extensions() {
     [[ -d "$EXT_SRC_DIR" ]] || return 0
 
@@ -369,10 +534,6 @@ build_extensions() {
 
         mkdir -p "$out_dir"
         cp -R "$ext_src." "$out_dir/"
-
-        case "$name" in
-            mcp-wrapper) generate_mcp_servers_json "$out_dir/servers.json" ;;
-        esac
 
         if [[ "$CHECK_MODE" != "true" ]]; then
             echo "  SYNC  extension: $name"
@@ -422,12 +583,15 @@ main() {
         local real_prompts_dir="$PROMPTS_DIR"
         local real_agents_dir="$AGENTS_DIR"
         local real_extensions_dir="$EXTENSIONS_DIR"
+        local real_pi_mcp_config="$PI_ADAPTER_CONFIG"
         SKILLS_DIR="$tmpdir/skills"
         PROMPTS_DIR="$tmpdir/prompts"
         AGENTS_DIR="$tmpdir/agents"
         EXTENSIONS_DIR="$tmpdir/extensions"
+        PI_ADAPTER_CONFIG="$tmpdir/mcp.json"
     else
         rm -rf "$SKILLS_DIR" "$PROMPTS_DIR" "$AGENTS_DIR" "$EXTENSIONS_DIR"
+        rm -f "$PI_ADAPTER_CONFIG"
     fi
 
     mkdir -p "$SKILLS_DIR" "$PROMPTS_DIR" "$AGENTS_DIR" "$EXTENSIONS_DIR"
@@ -483,8 +647,10 @@ main() {
     agent_count=$((agent_count + 1))
     [[ "$CHECK_MODE" != "true" ]] && echo "  SYNC  agent: general-purpose"
 
-    # --- Extensions (mcp-wrapper, subagent-runner, etc.) ---
+    # --- Extensions and MCP adapter config ---
     build_extensions
+    generate_pi_mcp_config "$PI_ADAPTER_CONFIG"
+    [[ "$CHECK_MODE" != "true" ]] && echo "  SYNC  mcp config: mcp.json"
 
     if [[ "$CHECK_MODE" == "true" ]]; then
         local stale=false
@@ -509,6 +675,14 @@ main() {
                 stale=true
             fi
         done
+
+        if [[ ! -f "$real_pi_mcp_config" ]]; then
+            echo "STALE  $real_pi_mcp_config does not exist (run ./sync-pi.sh)"
+            stale=true
+        elif ! cmp -s "$PI_ADAPTER_CONFIG" "$real_pi_mcp_config"; then
+            echo "STALE  $real_pi_mcp_config differs (run ./sync-pi.sh)"
+            stale=true
+        fi
 
         if [[ "$stale" == "true" ]]; then
             exit 1

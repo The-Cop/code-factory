@@ -267,14 +267,10 @@ Deduplicate by URL across both queries.
 **W2d: Jira Tickets**
 
 ```
-atlassian(
-  action = "call_tool",
-  tool = "searchJiraIssuesUsingJql",
-  args = {
-    jql = "assignee = currentUser() AND updated >= 'WEEK_START' AND updated <= 'WEEK_END' ORDER BY updated DESC",
-    limit = 50
-  }
-)
+mcp({
+  tool: "atlassian_searchJiraIssuesUsingJql",
+  args: "{\"jql\":\"assignee = currentUser() AND updated >= 'WEEK_START' AND updated <= 'WEEK_END' ORDER BY updated DESC\",\"limit\":50}"
+})
 ```
 
 Note which tickets moved to Done/Resolved — those are accomplishments.
@@ -282,14 +278,10 @@ Note which tickets moved to Done/Resolved — those are accomplishments.
 **W2e: Confluence Pages**
 
 ```
-atlassian(
-  action = "call_tool",
-  tool = "searchConfluenceUsingCql",
-  args = {
-    cql = "contributor = currentUser() AND lastmodified >= 'WEEK_START' AND lastmodified <= 'WEEK_END' AND type = page",
-    limit = 20
-  }
-)
+mcp({
+  tool: "atlassian_searchConfluenceUsingCql",
+  args: "{\"cql\":\"contributor = currentUser() AND lastmodified >= 'WEEK_START' AND lastmodified <= 'WEEK_END' AND type = page\",\"limit\":20}"
+})
 ```
 
 **W2f: Google Drive Documents**

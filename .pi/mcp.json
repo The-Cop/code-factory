@@ -1,0 +1,50 @@
+{
+  "settings": {
+    "directTools": false,
+    "idleTimeout": 10,
+    "autoAuth": false,
+    "samplingAutoApprove": false
+  },
+  "mcpServers": {
+    "atlassian": {
+      "url": "https://mcp.atlassian.com/v1/mcp",
+      "lifecycle": "lazy",
+      "directTools": false
+    },
+    "datadog-gmail": {
+      "url": "https://gmail-mcp-server-834963730936.us-central1.run.app/mcp",
+      "lifecycle": "lazy",
+      "directTools": false
+    },
+    "datadog-google-calendar": {
+      "url": "https://google-calendar-mcp-server-834963730936.us-central1.run.app/mcp",
+      "lifecycle": "lazy",
+      "directTools": false
+    },
+    "datadog-google-workspace": {
+      "url": "https://google-workspace-mcp-server-834963730936.us-central1.run.app/mcp",
+      "lifecycle": "lazy",
+      "directTools": false
+    },
+    "slack": {
+      "url": "https://mcp.slack.com/mcp",
+      "lifecycle": "lazy",
+      "directTools": false,
+      "auth": "oauth",
+      "oauth": {
+        "clientId": "1601185624273.8899143856786",
+        "redirectUri": "http://localhost:3118/callback"
+      }
+    },
+    "slack-sandbox": {
+      "url": "https://mcp.slack.com/mcp",
+      "lifecycle": "lazy",
+      "directTools": false,
+      "auth": "oauth",
+      "oauth": {
+        "clientId": "1601185624273.8899143856786",
+        "redirectUri": "http://localhost:3118/callback"
+      }
+    }
+  }
+}

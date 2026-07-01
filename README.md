@@ -216,7 +216,7 @@ User descriptions are wrapped in `<feature_request>` tags to prevent prompt inje
      | `opencode.jsonc` | `~/.config/opencode/opencode.jsonc` |
      | `claude/CLAUDE.md` | `~/.claude/CLAUDE.md` |
 
-   - Installs MCP servers from `mcp.json` into Claude Code and Codex, and regenerates the OpenCode MCP block.
+   - Installs MCP servers from `mcp.json` into Claude Code and Codex, regenerates the OpenCode MCP block, and generates the Pi MCP adapter config.
    - Installs or updates the OpenSpec CLI with npm (`@fission-ai/openspec@latest` by default).
    - Symlinks files from `hooks/` into `~/.claude/hooks/`.
    - Regenerates `.opencode/` assets by running `./sync-opencode.sh`.
@@ -253,7 +253,7 @@ OpenCode CLI configuration in JSONC. Includes provider setup (Anthropic, OpenAI,
 ### `mcp.json` (MCP servers)
 
 Declares MCP servers for Claude Code, OpenCode, Codex, and pi.dev.
-`init.sh` installs these into Claude Code and Codex, `sync-mcp.sh` regenerates the OpenCode block, and `sync-pi.sh` generates the Pi MCP wrapper manifest.
+`init.sh` installs these into Claude Code and Codex, `sync-mcp.sh` regenerates the OpenCode block, and `sync-pi.sh` generates `.pi/mcp.json` for `pi-mcp-adapter`.
 
 ### `sync-opencode.sh`
 
@@ -280,9 +280,11 @@ When an MCP server declares an OAuth `callbackPort`, the script also writes Code
 
 ### `sync-pi.sh` and `pi-extensions/`
 
-Generates `.pi/skills`, `.pi/prompts` (slash-command templates for user-invocable skills), `.pi/agents` (for the `pi-subagents` extension), and `.pi/extensions/mcp-wrapper` (HTTP MCP wrapper built from `pi-extensions/mcp-wrapper/`) for [pi.dev](https://pi.dev). `init.sh` symlinks everything into `~/.pi/agent/` and installs Pi packages from two sources:
+Generates `.pi/skills`, `.pi/prompts` (slash-command templates for user-invocable skills), `.pi/agents` (for `pi-subagents`), `.pi/extensions/ask-question`, and `.pi/mcp.json` (for `pi-mcp-adapter`) for [pi.dev](https://pi.dev). `init.sh` symlinks managed assets into `~/.pi/agent/` and installs Pi packages from two sources:
 
-- Community: `pi-rtk`, `pi-webfetch-to-markdown` (subagent runtime ships locally as `pi-extensions/subagent-runner/`, so no third-party dependency needed)
+- Community: `pi-subagents@0.31.1`, `pi-mcp-adapter@2.10.0`, `pi-web-search@1.3.0`
 - Datadog [`ddoghq-sandbox/datadog-pi-packages`](https://github.com/ddoghq-sandbox/datadog-pi-packages): cloned to `$DD_PI_REPO` (default `~/dd/datadog-pi-packages`), then `pi install` for `refresh-models` and `confluence-adf`
 
-If `ddtool` is authenticated and `models.json` has no AI Gateway provider, `init.sh` seeds `~/.pi/agent/models.json` from `pi.json` (providers and models, with `{{email}}` and `{{team}}` substituted at install time) so sessions route through the Datadog AI Gateway with `ml_app=pi` tagging. Edit `pi.json` to change providers or model lists, then run `make install`. After install, run `/refresh-models` from a Pi session to discover live model IDs (including Ollama) and migrate to the managed `ai-gw-*` provider layout. Opt out of the static seed with `PI_AUTOCONFIG=0`. OAuth-flowed MCP servers (slack) require `PI_MCP_<SERVER>_TOKEN` env vars; auto-approve writes with `PI_MCP_AUTOAPPROVE=1`. The `subagent-runner` extension registers a `subagent` tool that delegates to any agent under `~/.pi/agent/agents/` by spinning up an in-process `AgentSession` (shares the parent's auth and model registry, no fork/exec). Tune with `PI_SUBAGENT_MAX_CONCURRENCY` (default 4) and `PI_SUBAGENT_MAX_DEPTH` (default 2).
+If `ddtool` is authenticated and `models.json` has no AI Gateway provider, `init.sh` seeds `~/.pi/agent/models.json` from `pi.json` (providers and models, with `{{email}}` and `{{team}}` substituted at install time) so sessions route through the Datadog AI Gateway with `ml_app=pi` tagging. Edit `pi.json` to change providers or model lists, then run `make install`. After install, run `/refresh-models` from a Pi session to discover live model IDs (including Ollama) and migrate to the managed `ai-gw-*` provider layout. Opt out of the static seed with `PI_AUTOCONFIG=0`.
+
+`sync-pi.sh` rewrites generated Pi skill and agent references to use package-provided tools: `Task`/`Agent` become `subagent`, `AskUserQuestion` becomes `ask_question`, Claude MCP calls become the `mcp` proxy tool, and `WebSearch`/`WebFetch` become `web_search`. The generated `.pi/mcp.json` is HTTP-only, lazy, proxy-mode MCP configuration derived from root `mcp.json`; OAuth servers use `pi-mcp-adapter`'s OAuth flow instead of wrapper-specific bearer-token environment variables.

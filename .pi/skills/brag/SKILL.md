@@ -137,15 +137,10 @@ the quote serves as durable proof of the accomplishment.
 Search for pages the user created or contributed to:
 
 ```
-atlassian(
-  action = "call_tool",
-  tool = "searchConfluenceUsingCql",
-  args = {
-    cloudId = "<from getAccessibleAtlassianResources>",
-    cql = "contributor = currentUser() AND type = page ORDER BY lastModified DESC",
-    limit = 250
-  }
-)
+mcp({
+  tool: "atlassian_searchConfluenceUsingCql",
+  args: "{\"cloudId\":\"<from getAccessibleAtlassianResources>\",\"cql\":\"contributor = currentUser() AND type = page ORDER BY lastModified DESC\",\"limit\":250}"
+})
 ```
 
 **Results will be large.** Extract only: page ID, title, created_by, last_modified.
@@ -175,14 +170,10 @@ gh api "search/issues?q=reviewed-by:<github_user>+type:pr+created:>=<START_DATE>
 ### 2e: Jira Tickets
 
 ```
-atlassian(
-  action = "call_tool",
-  tool = "searchJiraIssuesUsingJql",
-  args = {
-    jql = "assignee = currentUser() AND updated >= '<START_DATE>' ORDER BY updated DESC",
-    limit = 50
-  }
-)
+mcp({
+  tool: "atlassian_searchJiraIssuesUsingJql",
+  args: "{\"jql\":\"assignee = currentUser() AND updated >= '<START_DATE>' ORDER BY updated DESC\",\"limit\":50}"
+})
 ```
 
 ### 2f: Git History (Background Agent)

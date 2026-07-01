@@ -143,7 +143,7 @@ If the user's request is vague, ask clarifying questions before proceeding. For 
 Before writing, gather context:
 
 1. **Read similar skills** in the repo to match conventions and quality bar.
-2. **Search the web** if the skill covers an unfamiliar domain (use WebSearch/WebFetch).
+2. **Search the web** if the skill covers an unfamiliar domain (use web_search).
 3. **Read [best-practices.md](references/best-practices.md)** for authoring principles: conciseness, degrees of freedom, token optimization.
 4. **Read [claude-search-optimization.md](references/claude-search-optimization.md)** for writing discoverable descriptions and choosing keywords.
 5. **For discipline-enforcing skills:** read [persuasion-principles.md](references/persuasion-principles.md) for authority, commitment, and rationalization-resistance techniques.

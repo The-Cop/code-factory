@@ -1,7 +1,7 @@
 ---
 name: researcher
 description: "Domain research agent. Investigates APIs, libraries, patterns, and best practices. Searches Confluence, documentation, and web resources."
-tools: ["Read", "Grep", "Glob", "Bash", "WebSearch", "WebFetch", "atlassian", "atlassian"]
+tools: ["Read", "Grep", "Glob", "Bash", "web_search", "mcp"]
 memory: "project"
 ---
 
@@ -128,17 +128,17 @@ If the task involves external libraries or frameworks, check for specialized MCP
 
 | MCP Tool | Detection | Usage |
 |----------|-----------|-------|
-| Context7 | Check if `context7` is available | `resolve_library_id` then `get_library_docs` for up-to-date API docs |
-| DeepWiki | Check if `deepwiki` is available | Fetch structured architecture docs for any GitHub repo |
+| Context7 | Check if `mcp({ tool: "context7_resolve_library_id", args: "{}" })` is available | `resolve_library_id` then `get_library_docs` for up-to-date API docs |
+| DeepWiki | Check if `mcp({ tool: "deepwiki_read_wiki_structure", args: "{}" })` is available | Fetch structured architecture docs for any GitHub repo |
 
 - If Context7 is available and the task involves a library: resolve the library ID and fetch relevant docs BEFORE web search
 - If DeepWiki is available and the task references a GitHub repo: fetch the repo's wiki structure and relevant pages
-- If neither is available: fall back to WebSearch for official documentation
+- If neither is available: fall back to web_search for official documentation
 - Do NOT require these MCPs — they are optional enhancements
 
 ### Step 1 — External Domain Research (only if triggered by Step 0)
 
-Use WebSearch and WebFetch to research the relevant external domain. Focus on:
+Use web_search to research the relevant external domain. Focus on:
 - How the format or ecosystem actually works (not how you assume it works)
 - Known edge cases, pitfalls, and non-obvious behaviors
 - Official documentation or authoritative sources
@@ -150,7 +150,7 @@ Flag any finding that contradicts what the feature specification or existing cod
 
 Search Confluence for related documentation using the Atlassian MCP tools:
 ```
-atlassian(action="call_tool", tool="searchConfluenceUsingCql", args={ cql="text ~ '<feature keywords>'" })
+mcp({ tool: "atlassian_searchConfluenceUsingCql", args: "{\"cql\":\"text ~ '<feature keywords>'\"}" })
 ```
 
 Look for:
@@ -162,7 +162,7 @@ Look for:
 
 When you find relevant pages, fetch the full content:
 ```
-atlassian(action="call_tool", tool="getConfluencePage", args={ pageId="<id>" })
+mcp({ tool: "atlassian_getConfluencePage", args: "{\"pageId\":\"<id>\"}" })
 ```
 
 ### Step 2.5 — Personal Google Drive Documents
