@@ -8,7 +8,9 @@
   ],
   "enabledModels": [
     "datadog-ai-gateway/openai/gpt-5.5:xhigh",
-    "datadog-ai-gateway-anthropic/claude-opus-4-7:high"
+    "datadog-ai-gateway-anthropic/claude-opus-4-7:high",
+    "datadog-ai-gateway-anthropic/claude-opus-4-8:high",
+    "datadog-ai-gateway-anthropic/claude-sonnet-5:high"
   ],
   "defaultProvider": "datadog-ai-gateway",
   "defaultModel": "openai/gpt-5.5",
