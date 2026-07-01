@@ -122,11 +122,13 @@ SRCS=(
     "$SCRIPT_DIR/settings.json"
     "$SCRIPT_DIR/opencode.jsonc"
     "$SCRIPT_DIR/claude/CLAUDE.md"
+    "$SCRIPT_DIR/pi-settings.json"
 )
 DESTS=(
     "$HOME/.claude/settings.json"
     "$HOME/.config/opencode/opencode.jsonc"
     "$HOME/.claude/CLAUDE.md"
+    "$HOME/.pi/agent/settings.json"
 )
 
 for i in "${!SRCS[@]}"; do
@@ -151,17 +153,18 @@ for i in "${!SRCS[@]}"; do
         # symlink as a regular copy. Safe to replace with a symlink.
         rm "$dest"
     elif [[ -f "$dest" ]]; then
-        # Regular file with different content. Claude Code rewrites
-        # ~/.claude/settings.json as a regular file when it edits settings, so
-        # back up and replace instead of failing. Other destinations keep the
-        # stricter "back up and skip" behaviour so user edits are preserved.
+        # Regular file with different content. Claude Code and Pi rewrite
+        # ~/.claude/settings.json / ~/.pi/agent/settings.json as regular files
+        # when they edit settings, so back up and replace instead of failing.
+        # Other destinations keep the stricter "back up and skip" behaviour so
+        # user edits are preserved.
         backup="${dest}.bak.$(date +%Y%m%d%H%M%S)"
         if ! mv "$dest" "$backup"; then
             errors+=("$src -> $dest: dest differed from source and backup failed")
             echo "FAIL  could not back up $dest, skipping"
             continue
         fi
-        if [[ "$dest" == "$HOME/.claude/settings.json" ]]; then
+        if [[ "$dest" == "$HOME/.claude/settings.json" || "$dest" == "$HOME/.pi/agent/settings.json" ]]; then
             echo "WARN  $dest differed from source, backed up to $backup and relinking"
         else
             errors+=("$src -> $dest: dest differed from source; backed up to $backup")

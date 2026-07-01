@@ -215,6 +215,7 @@ User descriptions are wrapped in `<feature_request>` tags to prevent prompt inje
      | `settings.json` | `~/.claude/settings.json` |
      | `opencode.jsonc` | `~/.config/opencode/opencode.jsonc` |
      | `claude/CLAUDE.md` | `~/.claude/CLAUDE.md` |
+     | `pi-settings.json` | `~/.pi/agent/settings.json` |
 
    - Installs MCP servers from `mcp.json` into Claude Code and Codex, regenerates the OpenCode MCP block, and generates the Pi MCP adapter config.
    - Installs or updates the OpenSpec CLI with npm (`@fission-ai/openspec@latest` by default).
@@ -277,6 +278,10 @@ Updates `~/.codex/config.toml` from `codex/config.toml` and `mcp.json`, preservi
 The generated sections are marked in the TOML file so rerunning `./init.sh` refreshes managed settings and servers idempotently.
 Managed Codex MCP servers use `default_tools_approval_mode = "auto"` so read-only tools can run normally while Codex prompts for side-effecting MCP operations based on tool metadata.
 When an MCP server declares an OAuth `callbackPort`, the script also writes Codex's global MCP OAuth callback port and localhost callback URL as top-level TOML settings so OAuth providers with fixed redirect URIs can complete login.
+
+### `pi-settings.json` (Pi)
+
+Symlinked to `~/.pi/agent/settings.json`. Tracks `defaultProvider`, `defaultModel`, `defaultThinkingLevel`, `theme`, `packages`, and `enabledModels` (Ctrl+P model cycling list). `enabledModels` entries support a `provider/model:thinkingLevel` suffix, so switching models with Ctrl+P also restores that model's remembered effort level (e.g. `datadog-ai-gateway/openai/gpt-5.5:xhigh`). Pi rewrites this file directly when installing/removing packages, so `init.sh` backs up and relinks on drift the same way it does for `~/.claude/settings.json`. Deliberately omits `lastChangelogVersion`, a volatile field Pi bumps on every update.
 
 ### `sync-pi.sh` and `pi-extensions/`
 
