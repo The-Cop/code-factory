@@ -11,7 +11,8 @@
 #   6. Installs managed Codex config, skills, agents, and execpolicy rules.
 #   7. Installs managed Pi skills, prompts, agents, extensions, MCP config, and packages.
 #   8. Installs or updates the OpenSpec CLI.
-#   9. Updates Claude Code CLI and all installed marketplace plugins.
+#   9. Installs or updates Plannotator (CLI, cross-agent skills, Codex hooks, Pi extension).
+#  10. Updates Claude Code CLI and all installed marketplace plugins.
 #
 # Behavior:
 #   - If the destination is an existing symlink, it is removed and re-created.
@@ -815,6 +816,105 @@ configure_pi_aigateway() {
     fi
 }
 configure_pi_aigateway
+
+# Install or update Plannotator (opt out via PLANNOTATOR_INSTALL=0).
+#
+# Plannotator ships as one release spanning a native CLI, cross-agent skills
+# (Claude Code, ~/.agents, OpenCode), Codex hooks, the sem diff sidecar, and the
+# Pi extension. We run a vendored, pinned copy of the official installer
+# (vendor/plannotator/install.sh) rather than piping the live remote script into
+# bash, and rather than reproducing ~1400 lines of install logic here. The
+# installer still downloads the ~117MB binary + skills from GitHub, but SHA256-
+# verifies them (and SLSA-verifies when gh is present). That download runs only
+# when the CLI is missing or PLANNOTATOR_UPDATE=1; the extras and model-invocation
+# state are reconciled on every run so a fresh machine converges to an existing one.
+#
+# Bump PLANNOTATOR_VERSION together with re-vendoring the installer -- see
+# vendor/plannotator/README.md.
+echo ""
+echo "Installing Plannotator..."
+PLANNOTATOR_VERSION="0.22.0"
+PLANNOTATOR_INSTALLER="$SCRIPT_DIR/vendor/plannotator/install.sh"
+PLANNOTATOR_CORE_SKILLS="plannotator-review,plannotator-annotate,plannotator-last"
+PLANNOTATOR_EXTRA_SKILLS=(plannotator-compound plannotator-setup-goal plannotator-visual-explainer)
+PLANNOTATOR_INVOCABLE="${PLANNOTATOR_CORE_SKILLS},$(IFS=,; echo "${PLANNOTATOR_EXTRA_SKILLS[*]}")"
+if [[ "${PLANNOTATOR_INSTALL:-1}" == "0" ]]; then
+    echo "  SKIP  PLANNOTATOR_INSTALL=0"
+elif [[ ! -f "$PLANNOTATOR_INSTALLER" ]]; then
+    errors+=("plannotator: vendored installer not found at $PLANNOTATOR_INSTALLER")
+    echo "  FAIL  vendored installer missing: $PLANNOTATOR_INSTALLER"
+elif ! command -v curl &>/dev/null; then
+    echo "  SKIP  curl not found (the installer needs it to download the binary)"
+elif ! command -v git &>/dev/null; then
+    echo "  SKIP  git not found (required to install Plannotator skills)"
+else
+    plannotator_bin="$HOME/.local/bin/plannotator"
+    if [[ ! -x "$plannotator_bin" || "${PLANNOTATOR_UPDATE:-0}" == "1" ]]; then
+        # SLSA build-provenance verification needs gh; fall back to the installer's
+        # always-on SHA256 check when gh is absent so a fresh machine still boots.
+        plannotator_attest=()
+        if command -v gh &>/dev/null; then
+            plannotator_attest=(--verify-attestation)
+        fi
+        # --non-interactive keeps the installer from opening the skills-CLI TTY
+        # picker for extras; --extras + --model-invocable persist the same
+        # preferences a manual install would have saved to ~/.plannotator/install-prefs.
+        if bash "$PLANNOTATOR_INSTALLER" \
+            --version "$PLANNOTATOR_VERSION" "${plannotator_attest[@]}" \
+            --non-interactive --extras --model-invocable "$PLANNOTATOR_INVOCABLE"; then
+            echo "  OK  plannotator ${PLANNOTATOR_VERSION} + core skills installed"
+            # The installer updates the Pi extension to latest; re-pin it to the
+            # same release as the CLI so the two never drift apart.
+            if command -v pi &>/dev/null; then
+                pi install "npm:@plannotator/pi-extension@${PLANNOTATOR_VERSION}" 2>&1 | tail -1 \
+                    && echo "  OK  pinned @plannotator/pi-extension@${PLANNOTATOR_VERSION}" \
+                    || echo "  WARN  could not pin @plannotator/pi-extension@${PLANNOTATOR_VERSION}"
+            fi
+        else
+            errors+=("plannotator: installer failed")
+            echo "  FAIL  plannotator installer"
+        fi
+    else
+        echo "  OK  plannotator already installed ($("$plannotator_bin" --version 2>/dev/null || echo present)); set PLANNOTATOR_UPDATE=1 to update"
+    fi
+
+    # The installer never installs the extra skills non-interactively -- its
+    # extras path needs a TTY for the skills-CLI agent picker and otherwise just
+    # prints the command. Install them for Claude Code ourselves, AFTER the
+    # installer so its one-time extras-cleanup migration has already run and
+    # won't wipe them.
+    plannotator_extras_missing=0
+    for skill in "${PLANNOTATOR_EXTRA_SKILLS[@]}"; do
+        [[ -e "$HOME/.claude/skills/$skill" || -e "$HOME/.agents/skills/$skill" ]] || plannotator_extras_missing=1
+    done
+    if [[ "$plannotator_extras_missing" -eq 1 ]]; then
+        if command -v npx &>/dev/null; then
+            if npx -y skills@latest add backnotprop/plannotator/apps/skills/extra \
+                --global --agent claude-code --skill '*' --yes; then
+                echo "  OK  plannotator extra skills installed"
+            else
+                echo "  WARN  plannotator extra skills install failed (retry: npx skills add backnotprop/plannotator/apps/skills/extra -g -a claude-code -s '*' -y)"
+            fi
+        else
+            echo "  SKIP  npx not found; install extras later with: npx skills add backnotprop/plannotator/apps/skills/extra"
+        fi
+    fi
+
+    # Extra skills arrive locked (disable-model-invocation: true). The install
+    # prefs above make every Plannotator skill model-invocable, so unlock the
+    # extras to match -- the installer already unlocked the core skills via
+    # --model-invocable, but only for skills present when it ran. Editing the
+    # canonical ~/.agents copy also updates the ~/.claude symlink.
+    for skill in "${PLANNOTATOR_EXTRA_SKILLS[@]}"; do
+        for scope in "$HOME/.agents/skills" "$HOME/.claude/skills"; do
+            skill_md="$scope/$skill/SKILL.md"
+            if [[ -f "$skill_md" ]] && grep -q '^disable-model-invocation: true$' "$skill_md"; then
+                grep -v '^disable-model-invocation: true$' "$skill_md" > "$skill_md.tmp" && mv "$skill_md.tmp" "$skill_md"
+                echo "  OK  enabled model invocation: $scope/$skill"
+            fi
+        done
+    done
+fi
 
 # Install git hooks from .githooks/
 for HOOK_SRC in "$SCRIPT_DIR/.githooks"/*; do

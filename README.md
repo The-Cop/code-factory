@@ -219,6 +219,7 @@ User descriptions are wrapped in `<feature_request>` tags to prevent prompt inje
 
    - Installs MCP servers from `mcp.json` into Claude Code and Codex, regenerates the OpenCode MCP block, and generates the Pi MCP adapter config.
    - Installs or updates the OpenSpec CLI with npm (`@fission-ai/openspec@latest` by default).
+   - Installs or updates Plannotator by running a vendored, pinned copy of its installer (`vendor/plannotator/install.sh`): the CLI, cross-agent skills, Codex hooks, and the Pi extension.
    - Symlinks files from `hooks/` into `~/.claude/hooks/`.
    - Regenerates `.opencode/` assets by running `./sync-opencode.sh`.
    - Symlinks generated `.opencode/{skills,agents,commands,plugins}` into `~/.config/opencode/`.
@@ -237,6 +238,7 @@ User descriptions are wrapped in `<feature_request>` tags to prevent prompt inje
 
 - Source of truth is under `productivity/` and `git/`; do not edit generated files under `.opencode/` directly.
 - OpenSpec uses a hybrid model: `init.sh` keeps the CLI up to date through npm, while this repo owns the workflow skills so generated global agent assets remain deterministic. Set `OPENSPEC_INSTALL=0` to skip CLI installation, `OPENSPEC_NPM_PACKAGE=@fission-ai/openspec@1.3.1` to pin a package, or `OPENSPEC_NPM_CACHE=<path>` to override the npm cache used by bootstrap.
+- Plannotator is installed by its own installer rather than as a marketplace plugin, because one release spans a native CLI, cross-agent skills, Codex hooks, and the Pi extension that must move in lockstep. To avoid piping a live remote script into `bash`, the installer is vendored at `vendor/plannotator/install.sh` and `init.sh` runs that local copy pinned to `PLANNOTATOR_VERSION` (with `--verify-attestation` when `gh` is present). It then installs the extra skills for Claude Code (the installer skips those without a TTY) and re-pins `@plannotator/pi-extension` to the same version so the CLI and Pi extension never drift. Bumping the version means re-vendoring the script and bumping `PLANNOTATOR_VERSION` together (see `vendor/plannotator/README.md`). Set `PLANNOTATOR_INSTALL=0` to skip it entirely, `PLANNOTATOR_UPDATE=1` to force a re-install when the CLI is already present, or `PLANNOTATOR_SKIP_SEM_INSTALL=1` / `PLANNOTATOR_SKIP_AGENT_TERMINAL_INSTALL=1` to skip its optional sidecars.
 - `make all` runs checks (`make check`) and config linting (`make lint`).
 - `make check` also verifies OpenCode/Codex/Pi sync freshness and managed Codex config/rules.
 - Re-run `./init.sh` after changing local bootstrap-managed files.
