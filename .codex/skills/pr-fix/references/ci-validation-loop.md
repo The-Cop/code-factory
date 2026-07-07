@@ -144,7 +144,15 @@ gh run rerun {run_id} --failed
 retry_ddci_job.sh {job_id}
 ```
 
-**If `retry_ddci_job.sh` is not available:** report the failure and Mosaic link. Let the user retry manually.
+If `retry_ddci_job.sh` is not available on `PATH`, use the bundled helper from this skill.
+Resolve this path relative to the `pr-fix` skill root, not the repository checkout:
+
+```bash
+<pr-fix-skill-root>/scripts/retry_ddci_job.sh {job_id}
+```
+
+The bundled helper accepts a bare GitLab job id, a GitLab job URL, or a Mosaic URL containing
+`taskExecutionId=<job-id>`.
 
 After re-running, return to Phase 1 to wait for the new run. Count this as an iteration.
 
