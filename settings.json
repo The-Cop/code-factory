@@ -162,7 +162,7 @@
       "/private/var/tmp"
     ]
   },
-  "model": "sonnet[1m]",
+  "model": "opus[1m]",
   "enabledMcpjsonServers": [
     "atlassian",
     "datadog-google-workspace",
