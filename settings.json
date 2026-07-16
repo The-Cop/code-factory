@@ -74,7 +74,6 @@
       "WebFetch(domain:gist.github.com)",
       "WebFetch(domain:platform.claude.com)",
       "WebFetch(domain:code.claude.com)",
-      "WebFetch(domain:opencode.ai)",
       "WebFetch(domain:www.anthropic.com)",
       "WebFetch(domain:resources.anthropic.com)",
       "WebFetch(domain:agentskills.io)",

@@ -1,24 +1,22 @@
 #!/usr/bin/env bash
 #
-# init.sh -- Bootstrap code-factory: symlink configs and install OpenCode assets globally.
+# init.sh -- Bootstrap code-factory configuration and supported agent assets.
 #
 # This script:
 #   1. Symlinks configuration files into the user's home directory.
 #   2. Syncs MCP servers into Claude Code.
-#   3. Symlinks Claude Code hooks, rules, and git hooks.
-#   4. Runs sync-opencode.sh to generate OpenCode assets in the repo.
-#   5. Symlinks .opencode/{skills,agents,commands} into ~/.config/opencode/.
-#   6. Installs managed Codex config, skills, agents, and execpolicy rules.
-#   7. Installs managed Pi skills, prompts, agents, extensions, MCP config, and packages.
-#   8. Installs or updates the OpenSpec CLI.
-#   9. Updates Claude Code CLI and all installed marketplace plugins.
+#   3. Symlinks Claude Code hooks and rules.
+#   4. Installs managed Codex config, skills, agents, and execpolicy rules.
+#   5. Installs managed Pi skills, prompts, agents, extensions, MCP config, and packages.
+#   6. Installs or updates the OpenSpec CLI.
+#   7. Updates Claude Code CLI and all installed marketplace plugins.
 #
 # Behavior:
 #   - If the destination is an existing symlink, it is removed and re-created.
 #   - If the destination is a regular file, the script records an error.
 #     To fix, back up or remove the existing file manually and re-run.
 #   - If the destination does not exist, the symlink is created.
-#   - Parent directories are created as needed (e.g., ~/.claude/, ~/.config/opencode/).
+#   - Parent directories are created as needed (e.g., ~/.claude/, ~/.codex/, ~/.pi/agent/).
 #   - The script exits non-zero if any file fails to link, with a summary at the end.
 #
 # This script is idempotent: running it multiple times produces the same result.
@@ -120,13 +118,11 @@ echo ""
 
 SRCS=(
     "$SCRIPT_DIR/settings.json"
-    "$SCRIPT_DIR/opencode.jsonc"
     "$SCRIPT_DIR/claude/CLAUDE.md"
     "$SCRIPT_DIR/pi-settings.json"
 )
 DESTS=(
     "$HOME/.claude/settings.json"
-    "$HOME/.config/opencode/opencode.jsonc"
     "$HOME/.claude/CLAUDE.md"
     "$HOME/.pi/agent/settings.json"
 )
@@ -185,11 +181,7 @@ for i in "${!SRCS[@]}"; do
     echo "LINK  $dest -> $src"
 done
 
-# Sync MCP servers: regenerate opencode.jsonc block + install into Claude Code
-echo ""
-echo "Syncing MCP servers..."
-"$SCRIPT_DIR/sync-mcp.sh"
-
+# Install MCP servers into Claude Code
 echo ""
 echo "Installing MCP servers into Claude Code (user scope)..."
 
@@ -270,106 +262,6 @@ for rule_src in "$SCRIPT_DIR/rules"/*.md; do
         echo "  LINK  $rule_dest -> $rule_src"
     fi
 done
-
-# Generate OpenCode assets in the repo
-echo ""
-echo "Syncing skills, agents, and commands..."
-"$SCRIPT_DIR/sync-opencode.sh"
-
-# Propagate .opencode/{skills,agents,commands} to ~/.config/opencode/
-echo ""
-echo "Linking to ~/.config/opencode/..."
-
-GLOBAL_DIR="$HOME/.config/opencode"
-OPENCODE_DIR="$SCRIPT_DIR/.opencode"
-MANIFEST="$GLOBAL_DIR/.code-factory-managed"
-
-new_manifest=()
-
-# Read old manifest for cleanup
-old_manifest=()
-if [[ -f "$MANIFEST" ]]; then
-    while IFS= read -r line; do
-        old_manifest+=("$line")
-    done < "$MANIFEST"
-fi
-
-# Symlink each rule file
-RULES_SRC_DIR="$SCRIPT_DIR/rules"
-if [[ -d "$RULES_SRC_DIR" ]]; then
-    mkdir -p "$GLOBAL_DIR/rules"
-    for rule_src in "$RULES_SRC_DIR"/*.md; do
-        [[ -f "$rule_src" ]] || continue
-        rule_name=$(basename "$rule_src")
-        rule_dest="$GLOBAL_DIR/rules/$rule_name"
-        if ! ln -sf "$rule_src" "$rule_dest"; then
-            errors+=("$rule_src -> $rule_dest: ln -sf failed")
-            echo "  FAIL  rules/$rule_name"
-        else
-            new_manifest+=("$rule_dest")
-            echo "  LINK  rules/$rule_name"
-        fi
-    done
-fi
-
-# Symlink each skill directory
-if [[ -d "$OPENCODE_DIR/skills" ]]; then
-    mkdir -p "$GLOBAL_DIR/skills"
-    for skill_src in "$OPENCODE_DIR/skills"/*/; do
-        [[ -d "$skill_src" ]] || continue
-        skill_name=$(basename "$skill_src")
-        skill_dest="$GLOBAL_DIR/skills/$skill_name"
-        if ! ln -sfn "$skill_src" "$skill_dest"; then
-            errors+=("$skill_src -> $skill_dest: ln -sfn failed")
-            echo "  FAIL  skills/$skill_name/"
-        else
-            new_manifest+=("$skill_dest")
-            echo "  LINK  skills/$skill_name/"
-        fi
-    done
-fi
-
-# Symlink agent, command, and plugin files
-for subdir in agents commands plugins; do
-    src_dir="$OPENCODE_DIR/$subdir"
-    dest_dir="$GLOBAL_DIR/$subdir"
-    [[ -d "$src_dir" ]] || continue
-    mkdir -p "$dest_dir"
-
-    while IFS= read -r src_file; do
-        rel="${src_file#"$src_dir"/}"
-        dest_file="$dest_dir/$rel"
-        if ! ln -sf "$src_file" "$dest_file"; then
-            errors+=("$src_file -> $dest_file: ln -sf failed")
-            echo "  FAIL  $subdir/$rel"
-        else
-            new_manifest+=("$dest_file")
-            echo "  LINK  $subdir/$rel"
-        fi
-    done < <(find "$src_dir" -type f \( -name "*.md" -o -name "*.ts" \) | sort)
-done
-
-# Manifest cleanup: remove stale global files
-sorted_manifest=$(printf '%s\n' "${new_manifest[@]}" | sort)
-cleaned=0
-for old_file in "${old_manifest[@]+"${old_manifest[@]}"}"; do
-    [[ -z "$old_file" ]] && continue
-    if ! echo "$sorted_manifest" | grep -qxF "$old_file"; then
-        if [[ -e "$old_file" || -L "$old_file" ]]; then
-            rm -f "$old_file"
-            echo "  CLEAN  $old_file"
-            cleaned=$((cleaned + 1))
-        fi
-        parent=$(dirname "$old_file")
-        rmdir "$parent" 2>/dev/null || true
-    fi
-done
-
-# Write new manifest
-echo "$sorted_manifest" > "$MANIFEST"
-
-echo ""
-echo "Linked ${#new_manifest[@]} files to ~/.config/opencode/. Cleaned $cleaned stale files."
 
 # Generate Codex assets in the repo
 echo ""
@@ -815,28 +707,6 @@ configure_pi_aigateway() {
     fi
 }
 configure_pi_aigateway
-
-# Install git hooks from .githooks/
-for HOOK_SRC in "$SCRIPT_DIR/.githooks"/*; do
-    [[ -f "$HOOK_SRC" ]] || continue
-    HOOK_NAME=$(basename "$HOOK_SRC")
-    HOOK_DEST="$SCRIPT_DIR/.git/hooks/$HOOK_NAME"
-    if [[ -L "$HOOK_DEST" ]]; then
-        rm "$HOOK_DEST"
-    elif [[ -e "$HOOK_DEST" ]]; then
-        errors+=("$HOOK_SRC -> $HOOK_DEST: destination already exists as a regular file")
-        echo "FAIL  $HOOK_DEST already exists as a regular file, cannot link"
-        continue
-    fi
-    if [[ ! -e "$HOOK_DEST" ]]; then
-        if ! ln -s "$HOOK_SRC" "$HOOK_DEST"; then
-            errors+=("$HOOK_SRC -> $HOOK_DEST: ln -s failed")
-            echo "FAIL  could not link $HOOK_DEST -> $HOOK_SRC"
-        else
-            echo "LINK  $HOOK_DEST -> $HOOK_SRC"
-        fi
-    fi
-done
 
 # Update Claude Code and marketplace plugins (after all setup is complete)
 echo ""

@@ -1,4 +1,4 @@
-.PHONY: all install lint check check-frontmatter check-agents check-refs check-agent-refs check-descriptions check-structure check-versions check-opencode-sync sync-opencode check-codex-sync sync-codex check-codex-config check-codex-rules check-pi-sync sync-pi check-mcp-sync sync-mcp help
+.PHONY: all install lint check check-frontmatter check-agents check-refs check-agent-refs check-descriptions check-structure check-versions check-codex-sync sync-codex check-codex-config check-codex-rules check-pi-sync sync-pi help
 
 all: check lint ## Run all checks (frontmatter, agents, refs, structure, plugins, lint)
 
@@ -9,7 +9,7 @@ help: ## Show this help message
 install: ## Symlink configuration files into the home directory
 	./init.sh
 
-lint: ## Validate JSON and JSONC files
+lint: ## Validate JSON files
 	@echo "Validating JSON files..."
 	@ok=true; \
 	for f in $$(find . -name '*.json' -not -path './.git/*' -not -path './.plans/*' -not -path './.codex/*' -not -path './.pi/*' | sort); do \
@@ -22,25 +22,6 @@ lint: ## Validate JSON and JSONC files
 		fi; \
 	done; \
 	if [ "$$ok" = false ]; then exit 1; fi
-	@echo "Validating JSONC files..."
-	@ok=true; \
-	jsonc_files=$$(find . -name '*.jsonc' -not -path './.git/*' -not -path './.plans/*' -not -path './.codex/*' -not -path './.pi/*' | sort); \
-	if [ -z "$$jsonc_files" ]; then \
-		echo "  SKIP  no JSONC files found"; \
-	elif command -v node > /dev/null 2>&1; then \
-		for f in $$jsonc_files; do \
-			if node ./validate-jsonc.mjs "$$f" 2>/dev/null; then \
-				echo "  OK  $$f"; \
-			else \
-				echo "  FAIL  $$f"; \
-				node ./validate-jsonc.mjs "$$f"; \
-				ok=false; \
-			fi; \
-		done; \
-		if [ "$$ok" = false ]; then exit 1; fi \
-	else \
-		echo "  SKIP  JSONC files (node not found; install Node.js for JSONC validation)"; \
-	fi
 	@echo "Done."
 
 check-frontmatter: ## Validate SKILL.md files have required YAML frontmatter fields
@@ -194,12 +175,6 @@ check-versions: ## Warn if plugin content changed since last commit without a ve
 	done
 	@echo "Done."
 
-sync-opencode: ## Sync skills and agents to OpenCode config directory
-	@./sync-opencode.sh
-
-check-opencode-sync: ## Validate OpenCode sync is up-to-date
-	@./sync-opencode.sh --check
-
 sync-codex: ## Sync skills and agents to Codex config directory
 	@./sync-codex.sh
 
@@ -218,13 +193,7 @@ sync-pi: ## Sync skills, prompts, agents, extensions, and MCP config to Pi confi
 check-pi-sync: ## Validate Pi sync is up-to-date
 	@./sync-pi.sh --check
 
-sync-mcp: ## Sync MCP servers from mcp.json to opencode.jsonc
-	@./sync-mcp.sh
-
-check-mcp-sync: ## Validate opencode.jsonc MCP block is up-to-date with mcp.json
-	@./sync-mcp.sh --check
-
-check: check-frontmatter check-agents check-refs check-agent-refs check-descriptions check-structure check-versions check-opencode-sync check-codex-sync check-codex-config check-codex-rules check-pi-sync check-mcp-sync ## Run all validation checks (frontmatter, agents, refs, structure, plugins)
+check: check-frontmatter check-agents check-refs check-agent-refs check-descriptions check-structure check-versions check-codex-sync check-codex-config check-codex-rules check-pi-sync ## Run all validation checks (frontmatter, agents, refs, structure, plugins)
 	@echo "Checking plugin references..."
 	@ok=true; \
 	for source in $$(python3 -c "import json; data=json.load(open('.claude-plugin/marketplace.json')); print('\n'.join(p['source'] for p in data['plugins']))"); do \

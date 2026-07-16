@@ -16,16 +16,15 @@ Announce: "I'm using the skill workbench to work on skills in this repository."
 
 ## Path Safety
 
-Do not write to managed directories (`~/.claude` or `~/.config/opencode`) without explicit user approval.
-These directories are overwritten on plugin sync — changes made there are silently lost.
-Reading from them is fine for research.
+Do not write directly to installed or generated directories (`~/.claude`, `~/.codex`, `~/.pi/agent`, `$REPO_ROOT/.codex`, or `$REPO_ROOT/.pi`).
+These paths are caches, installed links, or generated outputs — changes made there are silently lost.
+Reading from them is fine for research; edit canonical plugin sources and use repository sync targets instead.
 
 ### Valid write targets
 
 | Target | When to use |
-|--------|------------|
+|-|-|
 | `$REPO_ROOT/{plugin}/...` | Source skills and agents in the current repo |
-| `$REPO_ROOT/.opencode/...` | Generated OpenCode assets (via `sync-opencode.sh`, not direct edits) |
 | `~/.claude/projects/*/memory/` | MEMORY.md and pending-learnings (these are per-project, not managed by sync) |
 
 ### Managed directories — resolve before writing
@@ -34,9 +33,10 @@ Reading from them is fine for research.
 If a path points to a managed directory, resolve it to the repo-relative equivalent:
 
 | Managed path prefix | Correct write target |
-|----------------------|-------------------|
+|-|-|
 | `~/.claude/plugins/cache/{repo}/{plugin}/...` | `{repo-root}/{plugin}/...` |
-| `~/.config/opencode/skills/...` | `{repo-root}/.opencode/skills/...` |
+| `$REPO_ROOT/.codex/skills/...` or `~/.codex/skills/...` | `{repo-root}/{plugin}/skills/...`, then run the Codex sync target |
+| `$REPO_ROOT/.pi/skills/...` or `~/.pi/agent/skills/...` | `{repo-root}/{plugin}/skills/...`, then run the Pi sync target |
 | `~/.claude/settings.*` | Ask the user before modifying |
 
 ### If you believe a managed directory needs editing
@@ -58,11 +58,11 @@ AskUserQuestion(
 ### Red flags — STOP if you think any of these
 
 | Thought | Reality |
-|---------|---------|
+|-|-|
 | "I'll edit the cached copy directly — it's faster" | Cache is overwritten on sync. Edit the repo source. |
 | "This is a quick fix to the installed version" | Installed versions are read-only copies. Fix the source. |
 | "The glob result points to `~/.claude`, so I'll edit there" | Glob finds cache copies. Resolve to repo path before editing. |
-| "I need to update `~/.config/opencode` to test" | Plugin sync handles deployment. Edit repo source and sync. |
+| "I need to update `.codex` or `.pi` to test" | Those mirrors are generated. Edit canonical plugin sources and run the matching sync target. |
 | "It's just one small change, I'll fix the source later" | Later never comes. Edit the source now. |
 
 ## Reference Documents
@@ -254,22 +254,7 @@ Check whether the skill triggered. Record pass/fail for each query.
 
 **Cleanup:** Delete eval workspace artifacts after optimization completes to avoid token budget waste on future loads.
 
-### 2f: Create OpenCode Command
-
-Create `.opencode/commands/{name}.md` to mirror the skill for OpenCode:
-
-```yaml
----
-description: >
-  Use when {same triggers as SKILL.md description}.
----
-
-Invoke the `{name}` skill with explicit syntax:
-
-skill({ name: "{name}" })
-```
-
-### 2g: Validate and Version Bump
+### 2f: Validate and Version Bump
 
 1. Bump the owning plugin's version in `.claude-plugin/plugin.json` if it exists (minor bump for new skills).
 2. Run `make all` if a Makefile with that target exists. Otherwise, manually validate frontmatter, cross-references, and JSON.
@@ -425,7 +410,7 @@ Present a summary using the template in [references/report-template.md](referenc
 ## Error Handling
 
 | Error | Action |
-|-------|--------|
+|-|-|
 | No skills, agents, or plugins found | Inform user and offer to create initial skill infrastructure in the repo. |
 | No arguments and no recent skill changes | Ask user: create a new skill or improve existing ones? |
 | `make all` fails after 3 attempts | Report remaining failures with specific error output. |
@@ -434,4 +419,4 @@ Present a summary using the template in [references/report-template.md](referenc
 | Significant interface change | Describe the proposed change and ask the user before applying. |
 | Skill name conflicts with existing | Inform the user and suggest an alternative name. |
 | Reference file missing | Proceed with inline principles: concise, scannable, complete, consistent, self-contained. |
-| Write target under `~/.claude` or `~/.config/opencode` | Resolve to the repo-relative path. If resolution is not possible, ask the user before writing (see Path Safety section). |
+| Write target under an installed or generated Claude Code, Codex, or Pi path | Resolve to the canonical plugin source. If resolution is not possible, ask the user before writing (see Path Safety section). |

@@ -1,6 +1,6 @@
 # code-factory
 
-rtfpessoa's personal marketplace for [Claude Code](https://docs.anthropic.com/en/docs/claude-code), [OpenCode](https://opencode.ai), [Codex](https://github.com/openai/codex), and [pi.dev](https://pi.dev). It packages reusable skills and agents for structured feature delivery, docs workflows, and git operations.
+rtfpessoa's personal marketplace for [Claude Code](https://docs.anthropic.com/en/docs/claude-code), [Codex](https://github.com/openai/codex), and [pi.dev](https://pi.dev). It packages reusable skills and agents for structured feature delivery, docs workflows, and git operations.
 
 ## Quick Reference
 
@@ -63,7 +63,7 @@ rtfpessoa's personal marketplace for [Claude Code](https://docs.anthropic.com/en
 - `/datadog` -- Datadog product query via pup CLI: APM, logs, metrics, monitors, error tracking, RUM, infrastructure, security signals, incidents, SLOs, synthetics, CI/CD, and 30+ other API domains.
 - `/code-simplify` -- Code simplification across any scope (file, directory, package, branch diff, staged changes, or entire repo). Preserves behavior while improving clarity and maintainability.
 - `/ai-cli` -- CLI design evaluation and improvement for AI agents: scores against 8 Agent DX axes aligned with the AXI (Agent eXperience Interface) framework (machine-readable output, raw payload input, schema introspection, context window discipline, input hardening, safety rails, agent knowledge packaging, efficiency & composition), recommends prioritized improvements, and guides implementation.
-- `/openspec-propose`, `/openspec-apply-change`, `/openspec-archive-change`, `/openspec-explore` -- OpenSpec/OPSX workflows for decision-first proposals, canonical task implementation and deviation handling, archive/finalization, and read-only blindspot/reference exploration. The OpenSpec CLI stays npm-managed by `init.sh`; the skills are vendored here so Claude Code, OpenCode, Codex, and Pi receive the same versioned workflow instructions.
+- `/openspec-propose`, `/openspec-apply-change`, `/openspec-archive-change`, `/openspec-explore` -- OpenSpec/OPSX workflows for decision-first proposals, canonical task implementation and deviation handling, archive/finalization, and read-only blindspot/reference exploration. The OpenSpec CLI stays npm-managed by `init.sh`; the skills are vendored here so Claude Code, Codex, and Pi receive the same versioned workflow instructions.
 - `/skill-workbench` -- Skill and agent creation/improvement toolkit.
 
 The exploration, planning, brainstorming, implementation, and PR workflows share an unknowns-aware layer:
@@ -222,17 +222,13 @@ User descriptions are wrapped in `<feature_request>` tags to prevent prompt inje
      | Source | Destination |
      |-|-|
      | `settings.json` | `~/.claude/settings.json` |
-     | `opencode.jsonc` | `~/.config/opencode/opencode.jsonc` |
      | `claude/CLAUDE.md` | `~/.claude/CLAUDE.md` |
      | `pi-settings.json` | `~/.pi/agent/settings.json` |
 
-   - Installs MCP servers from `mcp.json` into Claude Code and Codex, regenerates the OpenCode MCP block, and generates the Pi MCP adapter config.
+   - Installs MCP servers from `mcp.json` into Claude Code and Codex and generates the Pi MCP adapter config.
    - Installs or updates the OpenSpec CLI with npm (`@fission-ai/openspec@latest` by default).
    - Symlinks files from `hooks/` into `~/.claude/hooks/`.
-   - Regenerates `.opencode/` assets by running `./sync-opencode.sh`.
-   - Symlinks generated `.opencode/{skills,agents,commands,plugins}` into `~/.config/opencode/`.
    - Symlinks generated `.codex/{skills,agents}` and managed `codex/rules/*.rules` into `~/.codex/`.
-   - Symlinks `.githooks/*` into `.git/hooks/` for this local clone.
 
    If a destination already exists as a regular file, bootstrap records an error and exits non-zero so you can fix the conflict explicitly.
 
@@ -244,10 +240,10 @@ User descriptions are wrapped in `<feature_request>` tags to prevent prompt inje
 
 ## Development Notes
 
-- Source of truth is under `productivity/` and `git/`; do not edit generated files under `.opencode/` directly.
+- Source of truth is under `productivity/` and `git/`; do not edit generated files under `.codex/` or `.pi/` directly.
 - OpenSpec uses a hybrid model: `init.sh` keeps the CLI up to date through npm, while this repo owns the workflow skills so generated global agent assets remain deterministic. Set `OPENSPEC_INSTALL=0` to skip CLI installation, `OPENSPEC_NPM_PACKAGE=@fission-ai/openspec@1.3.1` to pin a package, or `OPENSPEC_NPM_CACHE=<path>` to override the npm cache used by bootstrap.
 - `make all` runs checks (`make check`) and config linting (`make lint`).
-- `make check` also verifies OpenCode/Codex/Pi sync freshness and managed Codex config/rules.
+- `make check` also verifies Codex/Pi sync freshness and managed Codex config/rules.
 - Re-run `./init.sh` after changing local bootstrap-managed files.
 
 ## Configuration Files
@@ -256,18 +252,10 @@ User descriptions are wrapped in `<feature_request>` tags to prevent prompt inje
 
 Claude Code global configuration: environment flags, permission rules, default model (`opus`), MCP server enablement, installed marketplaces/plugins, and hooks (including Stop-hook invocation of `/reflect`).
 
-### `opencode.jsonc` (OpenCode)
-
-OpenCode CLI configuration in JSONC. Includes provider setup (Anthropic, OpenAI, Google, NVIDIA NIM, LM Studio), default model selection (`openai/gpt-5.3-codex`), permission policies, agent presets, and MCP wiring.
-
 ### `mcp.json` (MCP servers)
 
-Declares MCP servers for Claude Code, OpenCode, Codex, and pi.dev.
-`init.sh` installs these into Claude Code and Codex, `sync-mcp.sh` regenerates the OpenCode block, and `sync-pi.sh` generates `.pi/mcp.json` for `pi-mcp-adapter`.
-
-### `sync-opencode.sh`
-
-Generates `.opencode/skills`, `.opencode/agents`, and `.opencode/commands` from plugin source definitions, including frontmatter/tool-name transformations and stale-check mode (`--check`).
+Declares MCP servers for Claude Code, Codex, and pi.dev.
+`init.sh` installs these into Claude Code and Codex, and `sync-pi.sh` generates `.pi/mcp.json` for `pi-mcp-adapter`.
 
 ### `sync-codex.sh`
 
