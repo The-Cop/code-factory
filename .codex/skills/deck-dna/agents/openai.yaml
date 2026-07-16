@@ -1,0 +1,4 @@
+interface:
+  display_name: "Deck Dna"
+  short_description: "Use when the user needs to build a brand-accurate PowerPoint (PPTX) deck that..."
+  default_prompt: "Use $deck-dna to build a brand-accurate PowerPoint (PPTX) deck that looks like."
