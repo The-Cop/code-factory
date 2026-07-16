@@ -13,9 +13,14 @@ Create an OpenSpec change and generate every artifact required before implementa
 
 Parse the user's invocation prompt for a kebab-case change name or a feature description.
 
+Retrieve answers available from the repository, existing OpenSpec artifacts, documentation, history, or supplied references before asking the user.
 If no clear input was provided, ask the user what change they want to build.
 Derive a kebab-case name from the answer.
 Do not proceed until the requested change is understandable.
+
+Ask one question at a time in this order: architecture-changing, behavior-defining, then polish.
+For consequential choices, provide concrete options, a recommendation, and the trade-off.
+Stop asking when the remaining uncertainty has a safe default and is cheaper to validate during implementation.
 
 If `openspec/changes/<name>/` already exists, inspect it before writing anything.
 Continue that change only when the user's intent clearly matches it; otherwise ask for a different name.
@@ -54,9 +59,25 @@ Loop until every artifact in `applyRequires` is complete:
 6. Apply `context` and `rules` as constraints for writing, but do not copy those wrapper fields into the artifact.
 7. Re-run `openspec status --change "<name>" --json` and continue.
 
-If an artifact needs product or technical context that cannot be inferred from the repo or conversation, ask the user before writing it.
+If an artifact needs product or technical context that cannot be inferred from the repo or conversation, ask one focused question using the same blast-radius order before writing it.
 
-## Step 4: Verify Readiness
+## Step 4: Present a Decision-First Review
+
+Read the completed canonical artifacts and present their user-tweakable decisions before mechanical implementation details.
+Do not create a separate summary artifact.
+
+Lead with:
+
+1. **Outcome**: what will be built and the intended behavior.
+2. **Chosen approach**: why it was selected.
+3. **Riskiest assumption**: the assumption most likely to invalidate the plan.
+4. **Tweakable decisions**: expensive-to-change interfaces, data models, types, or user-visible behavior; for each, give one considered alternative and the cost of changing later.
+5. **Known unknowns**: the safe default for each non-blocking ambiguity and the observable signal that would trigger a pivot.
+6. **Mechanical work**: a compressed artifact and task summary.
+
+If the review exposes a blocking decision, ask one question and update the affected canonical artifact before declaring readiness.
+
+## Step 5: Verify Readiness
 
 Run:
 

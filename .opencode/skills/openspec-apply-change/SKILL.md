@@ -65,8 +65,16 @@ For each task:
 4. Mark the task complete in the task artifact by changing `- [ ]` to `- [x]`.
 5. Continue until all tasks are complete or a blocker is reached.
 
-Pause and ask if a task is ambiguous, contradicts another artifact, or reveals a design issue.
-When implementation changes the intended behavior, update the OpenSpec artifacts before continuing.
+When implementation evidence contradicts a planned path or assumption, classify the deviation before editing further:
+
+- **Reversible and behavior-preserving**: the intended scope and observable behavior remain unchanged, and the choice is easy to undo. Select the easiest-to-reverse valid option. Update every affected canonical proposal, design, spec, or task artifact with the evidence and rationale. Run focused validation proving the substitute preserves the contract, record the command and result in the affected canonical task or design artifact, then continue from the updated artifacts.
+- **Behavior-changing, irreversible, or scope-expanding**: the choice changes user-visible or system-visible behavior, commits to a difficult migration or contract, or adds work outside the approved scope. Stop at a safe checkpoint. Do not change canonical artifacts, implementation, or completion markers for the disputed work until the user gives direction.
+
+Do not create a separate implementation-notes file.
+Record deviations where a future apply or archive run will read them: update the affected canonical artifacts and keep task wording current.
+After a reversible deviation, re-read the changed artifacts before resuming and include the focused validation evidence in the progress report.
+
+Pause and ask if a task is ambiguous, contradicts another artifact, or reveals a design issue that cannot be resolved as behavior-preserving and reversible.
 
 ## Step 5: Report Progress
 
@@ -86,6 +94,8 @@ If every task is complete, suggest `openspec-archive-change`.
 |-|-|
 | No active change can be selected | Run `openspec list --json` and ask the user to choose. |
 | Apply instructions report `blocked` | Report the missing artifacts and stop before coding. |
-| Task contradicts artifacts | Pause, explain the contradiction, and update artifacts after user confirmation. |
+| Task contradicts artifacts | Classify the contradiction first: follow the reversible path without a confirmation round-trip, or pause for user direction when behavior, scope, or irreversibility is affected. |
+| Deviation preserves behavior and is reversible | Update affected canonical artifacts with evidence and rationale, validate the substitute, then continue. |
+| Deviation changes behavior, scope, or an irreversible decision | Stop at a safe checkpoint without marking the task complete and request user direction. |
 | Validation fails | Fix the failure before marking the task complete. |
 | User interrupts | Leave completed task checkboxes accurate and report the current progress. |

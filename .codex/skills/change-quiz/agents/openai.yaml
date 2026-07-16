@@ -1,0 +1,4 @@
+interface:
+  display_name: "Change Quiz"
+  short_description: "Use when any request asks to check, verify, assess, or test a person's unders..."
+  default_prompt: "Use $change-quiz to any request asks to check, verify, assess, or test a person's understanding of changes."

@@ -159,6 +159,8 @@ Tests pass -> /atcommit (remaining) -> git push -> /pr (create PR) -> /pr-fix (v
 - Well-specified descriptions pass through quickly; vague ones get iterative refinement
 - Refiner proposes 2-3 approaches with trade-offs and gets user preference before finalizing
 - Refiner asks one question at a time (prefer multiple choice) to reduce cognitive load
+- Before asking, the refiner retrieves answers available from repository code, documentation, history, supplied references, and existing state artifacts
+- The refiner asks unresolved questions by blast radius: architecture-changing first, behavior-defining second, polish last; it provides a recommendation for consequential choices and stops when remaining uncertainty is cheaper and safe to resolve during implementation
 - **Interactive**: Asks clarifying questions, proposes approaches. After refiner completes, orchestrator presents the refined spec summary and WAITS for explicit user approval before proceeding to RESEARCH. User can approve, adjust, or request further refinement.
 - **Autonomous**: Synthesizes from context, selects best approach, logs decisions in Decisions Made
 
@@ -169,6 +171,12 @@ Tests pass -> /atcommit (remaining) -> git push -> /pr (create PR) -> /pr-fix (v
   - **Step 0 — Domain Research Evaluation**: determines if the task relies on knowledge outside the codebase (external APIs, file formats, protocols, specs, third-party services)
   - **Step 1 — External Domain Research** (only if triggered): web_search for authoritative sources, edge cases, and non-obvious behaviors BEFORE Confluence
   - **Step 2 — Confluence + General Web Research**: design docs, RFCs, APIs, best practices
+- When a reference implementation is supplied, both agents treat it as a semantic specification before planning target code:
+  - Summarize behaviors, guarantees, deliberate decisions, and evidence
+  - Separate incidental language/framework details from required semantics
+  - Map semantics to native target-repository conventions and report translation gaps
+  - Confirm the license before reusing implementation text; if unclear, analyze behavior only and copy nothing
+  - If the source is unavailable or evidence is insufficient, label what remains unverified and ask for access only when it changes architecture, behavior, or scope
 - Output: Context, Assumptions (tagged: [EXTERNAL DOMAIN], [CODEBASE], [TASK DESCRIPTION]), Constraints, Risks, Open Questions
 - **Both sources are mandatory** - do not skip Confluence search
 - **Interactive**: Present research summary, ask user to confirm assumptions and scope
@@ -202,7 +210,7 @@ the deviation is handled through the Plan Amendment Protocol
 - Spawn `planner` to create plan (references both codebase findings AND Confluence context)
 - Output: Milestones, Task Breakdown, Validation Strategy
 - Plan must embed relevant context inline (not only links)
-- **Interactive**: Present plan, ask user to approve or request changes
+- **Interactive**: Present a decision-first summary from PLAN.md, then ask user to approve or request changes. Lead with outcome, chosen approach, riskiest assumption, tweakable decisions with one alternative and later-change cost, known unknown defaults with pivot signals, then compressed mechanical work.
 - **Autonomous**: Proceed to review, let reviewer catch issues
 
 ## PLAN_REVIEW Phase
@@ -231,7 +239,7 @@ No separate consistency-checker dispatch is needed.
    - **High findings (interactive)** → present to user, ask whether to address or track as risks
    - **High findings (autonomous)** → log as tracked risks, proceed
    - **Medium findings** → logged as risks to watch during EXECUTE
-- **Interactive**: Present review + red-team findings, ask user for final approval before execution
+- **Interactive**: Present review + red-team findings as an update to the decision-first PLAN.md summary. Keep execution dependency order unchanged, but put user-tweakable choices and unresolved pivot signals before task mechanics. Ask for final approval before execution.
 - **Autonomous**: Auto-approve if no critical issues, loop back for required changes only
 
 ## EXECUTE Phase
@@ -267,7 +275,7 @@ After context preparation, identify **ready milestones** — milestones whose de
 When multiple milestones are ready simultaneously, check the File Impact Map for file overlap:
 
 | Condition | Execution Mode |
-|-----------|---------------|
+|-|-|
 | Ready milestones have **no file overlap** in File Impact Map | Run in **parallel** — one task per milestone dispatched in a single message |
 | Ready milestones **share modified files** | Run **sequentially** — one milestone at a time (current behavior) |
 
@@ -462,7 +470,7 @@ After each subagent Task completes, extract `total_tokens` and `duration_ms` fro
 Track cumulatively at three levels:
 
 | Level | What's tracked | When reported |
-|-------|---------------|--------------|
+|-|-|-|
 | Per-task | Sum of implementer + task-critic + red-teamer | TASK_COMPLETE event (also written to bundle frontmatter `token_cost_usd` / `duration_ms`) |
 | Per-milestone | Sum of all tasks in the milestone | MILESTONE_COMPLETE event |
 | Grand total | Sum of all milestones + overhead (research, planning, validation) | SESSION_COMPLETE event |
@@ -542,7 +550,7 @@ When an implementer or reviewer reports that something doesn't match the plan's 
 classify the deviation by severity and handle accordingly:
 
 | Severity | Detection | Handling |
-|----------|-----------|---------|
+|-|-|-|
 | **Minor** — wrong assumption, step needs adjusting, small addition | Implementer says "this won't work because..." or "this already exists" or reviewer flags plan misalignment as justified | **Interactive**: propose specific PLAN.md edit, show before/after, ask user approval via `ask_question` before writing. **Autonomous**: log rationale in Decisions Made, apply edit, continue. |
 | **Major** — wrong approach, missing phase, scope change, fundamental rethink | Implementer reports approach is infeasible, or discovery invalidates multiple downstream tasks | **Both modes**: stop the current batch, append a `DEVIATION_MAJOR` event to events.jsonl with evidence, present the issue to the user. Recommend re-planning (return to PLAN_DRAFT). |
 
@@ -558,6 +566,7 @@ A resuming agent reads the current plan, not the original plan plus unstructured
    - Add an entry to the `## Plan Amendments` section with trigger, changes, and downstream impact
 3. Update FEATURE.md: set `last_plan_amendment` to current timestamp, log in Surprises and Discoveries
 4. Regenerate SNAPSHOT.md to reflect the amended plan
+5. Run focused validation for the amended contract and record the evidence before resuming downstream work
 
 After resolving a deviation, re-read the latest PLAN.md before resuming — it may have changed.
 Log all deviations as events in events.jsonl and in the Surprises and Discoveries section of FEATURE.md.
@@ -587,7 +596,7 @@ When all tasks in a milestone are complete and tests pass, the orchestrator (NOT
 Compare plan vs reality:
 
 | Check | Detection | Threshold | Action |
-|-------|-----------|-----------|--------|
+|-|-|-|-|
 | Unplanned files | `git diff --name-only <base_ref>..HEAD` vs File Impact Map | >20% unplanned | Log warning, review with user |
 | Test ratio | New test files / New source files | <0.3 | Log warning, may need more tests |
 | Scope drift | Count of tasks marked "Extra" in spec reviews | >2 per milestone | Log DEVIATION_MINOR |
@@ -722,7 +731,13 @@ Skip if the feature is purely internal (no user-facing changes).
 - Loop `/pr-fix` up to 2 times if new automated review feedback arrives after fixes
 
 ### 7. Report and Archive
-- Report final outcome to user: PR URL, commit count, CI status, review thread status
+- Report final outcome to user: PR URL, commit count, CI status, and review thread status
+- Read existing canonical state rather than creating a standalone implementation-notes file, and include:
+  - Recorded deviation count and the highest-impact plan amendment from events.jsonl, PLAN.md, and FEATURE.md
+  - Discovered edge-case count, outstanding-backlog count, and the highest-impact discovery across resolved and outstanding `tasks/T-DISC-*.md` bundles
+  - Unresolved review questions from REVIEW.md, VALIDATION.md, and open PR feedback
+  - The most consequential learning from Decisions Made, Surprises and Discoveries, or validation evidence
+  - Canonical artifact locations for FEATURE.md, PLAN.md, REVIEW.md, VALIDATION.md, and remaining discovery bundles
 - Archive run state (mark `current_phase: DONE` in FEATURE.md)
 
 ### 7.5. Extract Session Learnings

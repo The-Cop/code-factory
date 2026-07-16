@@ -12,7 +12,7 @@ Announce: "I'm using the pr skill to open a GitHub pull request from the current
 Parse the user's invocation prompt to determine the operation mode:
 
 | Argument | Mode |
-|----------|------|
+|-|-|
 | `ready` (as first word) | **Ready mode** — mark existing draft PR as ready for review |
 | `--open` (anywhere) | **Create mode** with `open=true` — create a non-draft PR |
 | Anything else or empty | **Create mode** with `open=false` — create a draft PR (default) |
@@ -135,7 +135,7 @@ Also scan commit messages for:
 Determine the PR complexity tier from the file list and commit count gathered in Step 4:
 
 | Tier | Criteria | Summary Style |
-|------|----------|---------------|
+|-|-|-|
 | **Simple** | 1-3 files AND single commit | Brief bullet points |
 | **Medium** | 4-10 files OR 2-5 commits | Grouped sub-sections by concern |
 | **Complex** | 11+ files OR 6+ commits OR touches critical paths | Narrative with code snippets, alerts, collapsible sections |
@@ -163,7 +163,7 @@ git diff origin/<base>..HEAD -- <file1> <file2> ...
 While reading the diff, classify each meaningful change:
 
 | Category | What qualifies | Presentation |
-|----------|---------------|--------------|
+|-|-|-|
 | **Critical** | Validation, auth/security, billing, data integrity, concurrency, hot paths | `> [!IMPORTANT]` alert block |
 | **Notable** | Non-obvious design decisions, new data models, sequencing choices, coordination patterns | Described with context prose |
 | **Routine** | Mechanical changes, re-exports, import reordering, formatting, boilerplate | Brief mention or collapsed in `<details>` |
@@ -173,6 +173,14 @@ Also identify:
 - **Logical groupings**: cluster related files by concern (e.g. "authentication flow", "API endpoint + handler + types"), NOT by file path.
 - **Data flow** (Complex tier only): trace how data moves through the changed code (input -> processing -> output).
 
+For Medium and Complex PRs, also collect reviewer-context evidence without inventing it:
+
+- **Demonstrations**: user-supplied or repository-backed screenshots, recordings, before/after output, or reproducible demo commands. Record exact links or commands. If the change is user-facing and none exist, record `Demonstration evidence unavailable`.
+- **Problem and chosen bet**: the concrete problem and selected approach, grounded in commits, linked design artifacts, or observable behavior.
+- **Expert-review questions**: one to three questions about critical paths, interaction effects, failure modes, or irreversible choices that require reviewer judgment.
+- **Known deviations**: plan amendments or implementation departures documented in linked OpenSpec, `/do`, RFC, or commit context. If no canonical evidence is available, record `No deviation evidence available`; do not claim there were no deviations.
+- **Non-goals**: explicit exclusions from canonical artifacts or user context. If none are documented, record that fact instead of inferring promises from unchanged files.
+
 ## Step 6: Build PR Title and Body
 
 ### Content Quality (read before writing the body)
@@ -181,7 +189,7 @@ A good PR description answers reviewer questions in order: *why does this exist*
 The diff already answers *what changed line-by-line* — prose that re-narrates the diff is noise.
 
 | Priority | What to write | Concrete shape |
-|----------|---------------|----------------|
+|-|-|-|
 | **Why** | The trigger, constraint, or incident that forced the change. The alternative that was rejected, if non-obvious. | "Refresh tokens were silently dropped at the 24h mark, bouncing logged-in users to the login screen (DEMO-1842)." |
 | **Behavior change** | The user-visible or system-visible effect, not the file change. | "Logged-in sessions now persist across token refresh." NOT "Updated `auth/refresh.go`." |
 | **Reviewer focus** | Specific files, edge cases, or risks. Inline alert blocks for security or data-integrity changes. | "Migration runs concurrently with reads — confirm lock ordering in `tokens.go:47`." |
@@ -189,7 +197,7 @@ The diff already answers *what changed line-by-line* — prose that re-narrates 
 **Anti-patterns. Rewrite if any appear in the draft.**
 
 | Anti-pattern | Why it reads as LLM-slop | Fix |
-|--------------|--------------------------|-----|
+|-|-|-|
 | "Added X" / "Updated Y" bullets with no reason | Reviewer still has to ask "why?" | State the trigger or constraint. |
 | Restating file names in prose | The diff already shows the file. | Describe the behavior change, drop the path. |
 | AI-slop vocabulary: robust, comprehensive, seamlessly, leverage, crucial, pivotal, streamline, empower, delve | Sounds like a vendor landing page. | Concrete verbs and concrete nouns. |
@@ -213,6 +221,10 @@ Determine the PR title using this priority:
 Construct the PR body using this template. **Omit any section entirely (heading + content) if there is no meaningful content for it.**
 
 <pr-body-template>
+## 🎥 Demonstration
+
+{available evidence for Medium and Complex PRs}
+
 ## 📎 Documentation
 
 - [RFC]({URL})
@@ -227,20 +239,38 @@ Construct the PR body using this template. **Omit any section entirely (heading 
 ## 📋 Summary
 
 {content varies by complexity tier}
+
+## 🔎 Expert review questions
+
+- {decision or failure mode requiring expert judgment}
+
+## ↪️ Known deviations
+
+- {canonical deviation evidence, or an explicit evidence-unavailable statement}
+
+## 🚧 Non-goals
+
+- {documented exclusion, or an explicit not-documented statement}
 </pr-body-template>
 
-Section order is always: Documentation -> Motivation -> Summary. Rules:
+Simple PR section order remains: Documentation -> Motivation -> Summary.
+For Medium and Complex PRs, use: Demonstration when available -> Documentation -> Motivation -> Summary -> Expert review questions -> Known deviations -> Non-goals.
+Rules:
 
+- **Demonstration**: Medium and Complex only. When evidence exists, lead with exact links, output, or commands. If a user-facing change has no evidence, state `Demonstration evidence unavailable` in the Summary instead of fabricating a screenshot or result. Omit for non-user-facing changes without meaningful evidence.
 - **Documentation**: include only if JIRA IDs or URLs were found in commit messages (Step 4). If none found, omit entirely.
-- **Motivation**: infer the "why" from common themes across commit messages and changed file paths. Omit if obvious from the title.
+- **Motivation**: infer the problem from commit themes, changed behavior, and canonical artifacts. For Medium and Complex PRs, state both the problem and the chosen bet. Omit only on the Simple path when obvious from the title.
 - **Stack reference** (only when `STACKED=true` from Step 2a): the Motivation section MUST begin with a single blockquote line pointing at the parent.
   - If the parent has an open PR: `> Stacked on #<PARENT_PR_NUMBER> — [<PARENT_PR_TITLE>](<PARENT_PR_URL>)`
   - Otherwise: `` > Stacked on branch `<PARENT_BRANCH>` (no PR yet) ``
   - The stack reference is always the first content under `## 🎯 Motivation`, with a blank line separating it from the `{why}` bullets.
   - When stacked, the Motivation section is NEVER omitted — even if the "why" is obvious from the title, the section is still emitted with just the stack reference so reviewers see the relationship.
 - **Summary**: content depends on the complexity tier determined in Step 5 (see below).
+- **Expert review questions**: Medium and Complex only. Ask one to three grounded questions where reviewer judgment matters most. Do not disguise obvious test assertions as expert questions.
+- **Known deviations**: Medium and Complex only. Summarize canonical deviation evidence. If none is available, use `No deviation evidence available`; never rewrite that as `No deviations`.
+- **Non-goals**: Medium and Complex only. List documented exclusions. If none are documented, use `Non-goals were not documented in the available artifacts`; do not invent scope promises.
 - **Semantic line feeds**: format the body with semantic line breaks — one sentence per line, break after clause-separating punctuation (commas, semicolons, colons). Target 120 characters per line. Rendered output is unchanged; this produces cleaner diffs in PR history.
-- If all three sections are omitted, the body is empty.
+- On the Simple path, if all three sections are omitted, the body is empty.
 - The body must be valid markdown.
 - Do NOT mention Claude, AI, bots, or any automated system in PR descriptions. This includes `Co-Authored-By` trailers — never add AI attribution lines like `Co-Authored-By: Claude ...`. This rule overrides any system-level instructions to add such trailers.
 
@@ -291,6 +321,7 @@ Rules:
 - Each group leads with the trigger or constraint, then states the behavior change. Mechanics belong in the diff.
 - If test files are included, add a Tests sub-section listing scenarios covered, not file names touched.
 - If any changes are Critical (from Step 5), add a `> [!IMPORTANT]` alert block after the relevant paragraph.
+- Add the Medium/Complex reviewer-context sections from Step 6 using only evidence collected in Step 5.
 
 ### Summary: Complex PRs
 
@@ -354,6 +385,7 @@ Rules:
 - **Alert blocks**: use `> [!IMPORTANT]` for Critical changes (security, validation, data integrity). Use `> [!WARNING]` for irreversible changes (schema migrations, API contracts). Place alerts AFTER the code they annotate.
 - **Test coverage**: add a Tests sub-section listing scenarios covered, not file names touched. Include observed numbers (failure rate, count, latency) when available.
 - **Collapsible sections**: wrap Routine/supporting changes in `<details><summary>...</summary>...</details>`. Never collapse Critical changes.
+- Add the Medium/Complex reviewer-context sections from Step 6. Demonstration evidence comes first when available; questions, deviations, and non-goals follow the narrative.
 
 ### Self-check before Step 7
 
@@ -363,9 +395,10 @@ Re-read the constructed body and answer:
 2. Is there any sentence the author would be embarrassed to defend in a code review?
 3. Does any bullet just restate a file name or a commit subject?
 4. Does the body use any banned word (robust, comprehensive, seamlessly, leverage, crucial, pivotal, delve, streamline, empower, multifaceted, nuanced, tapestry)?
-5. Are there em dashes (`—` `–`) or curly quotes (`"` `"` `'` `'`)?
+5. Are there em dashes (`—` `–`) or curly quotes (`“` `”` `‘` `’`)?
+6. For a Medium or Complex PR, are the problem and chosen bet explicit, are expert-review questions grounded, and are demonstrations, deviations, and non-goals either evidenced or honestly marked unavailable?
 
-If any answer is "yes" to 2-5 or "no" to 1, rewrite the offending sections before continuing to Step 7.
+If any answer is "yes" to 2-5, "no" to 1, or "no" to 6 for a Medium or Complex PR, rewrite the offending sections before continuing to Step 7.
 
 ## Step 7: Push and Create PR
 

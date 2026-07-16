@@ -55,6 +55,7 @@
       "Skill(productivity:skill-workbench)",
       "Skill(productivity:performance-feedback)",
       "Skill(productivity:brainstorm)",
+      "Skill(productivity:change-quiz)",
       "Skill(productivity:code-simplify)",
       "Skill(productivity:workspace)",
       "Skill(productivity:datadog)",
@@ -162,7 +163,6 @@
       "/private/var/tmp"
     ]
   },
-  "model": "opus[1m]",
   "enabledMcpjsonServers": [
     "atlassian",
     "datadog-google-workspace",
@@ -229,7 +229,8 @@
     "permissions-setup@mrlee-plugins": true,
     "valet@datadog-claude-plugins": true,
     "codex@openai-codex": true,
-    "appgate@datadog-claude-plugins": true
+    "appgate@datadog-claude-plugins": true,
+    "migrate-to-rapid@datadog-claude-plugins": true
   },
   "extraKnownMarketplaces": {
     "claude-plugins-official": {

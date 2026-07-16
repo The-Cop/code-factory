@@ -7,6 +7,8 @@ These supplement the orchestrator's own agent rules with context only available 
 
 - During REFINE, the refiner MUST propose 2-3 approaches with trade-offs and get user preference before finalizing the specification
 - Questions to the user should be ONE at a time, preferring multiple choice options
+- Retrieve discoverable answers before asking; order remaining questions as architecture-changing, behavior-defining, then polish
+- Give a recommendation for consequential choices, and stop questioning when remaining uncertainty is cheaper and safe to validate during implementation
 - The chosen approach is recorded in the specification and MUST be honored during planning
 - YAGNI: remove unnecessary features from specifications and plans — if it wasn't requested, exclude it
 - The refiner computes a weighted ambiguity score (0.0-1.0). Gate: proceed to RESEARCH only when ambiguity ≤ 0.2
@@ -114,7 +116,7 @@ A resuming agent reads the current plan, not the original plan plus unstructured
 ## Service Degradation
 
 | Service | If Unavailable | Action |
-|---------|---------------|--------|
+|-|-|-|
 | Confluence MCP | Search returns error | Continue with web-only research, log warning |
 | Context7/DeepWiki | Not configured | Fall back to web_search for library docs |
 | Git remote | Push fails | Save state, warn user, do not block DONE |

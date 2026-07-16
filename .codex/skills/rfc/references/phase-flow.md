@@ -25,7 +25,7 @@ RFC type: <problem_statement|design>
 Refine this RFC topic into a detailed specification. This is for an RFC document, not code.
 
 1. Analyze the topic for ambiguity, missing context, and scope questions.
-2. Gather concrete inputs from the user. Ask for each of these (one at a time, preferring multiple choice):
+2. Gather concrete inputs. First retrieve answers from the existing RFC, repository, documentation, history, and supplied references. Ask the user only for unresolved decision-critical inputs (one at a time, preferring multiple choice):
    - Problem statement with specific examples and measured impact
    - Constraints: latency, cost, staffing, deadlines, compliance requirements
    - Existing system details: what exists today, links or descriptions of current architecture
@@ -34,7 +34,7 @@ Refine this RFC topic into a detailed specification. This is for an RFC document
    - Risks the user already suspects
    - Migration expectations: phased rollout, backwards compatibility, data backfill
    - Open questions the user already knows about
-   If the user does not provide these, the RFC will fill gaps with guesses. Guesses read as AI-generated.
+   Never fill missing facts with guesses. Record safe defaults as assumptions and identify the observable signal that would trigger a pivot.
 3. Propose 2-3 approaches to scoping this RFC. For each approach:
    - What would be included and excluded
    - Target audience and stakeholders
@@ -48,7 +48,7 @@ Refine this RFC topic into a detailed specification. This is for an RFC document
    - Known alternatives and suspected risks
    - Key questions that research must answer
    - Success criteria for the RFC document itself
-5. Questions to the user should be ONE at a time, preferring multiple choice.
+5. Questions to the user should be ONE at a time, preferring multiple choice. Ask architecture-changing questions first, behavior-defining questions second, and polish questions last. Lead with a recommendation and trade-offs. Stop when remaining uncertainty is cheaper and safe to resolve during implementation or review.
 
 ITERATION MODE (when iterates_on is set in RFC-STATE.md):
 You also receive the existing RFC document and the user's improvement request.
@@ -98,6 +98,18 @@ For each finding:
   For code paths, use inline code: \`services/user/models/schema.go:45-80\`
 - Extract the relevant data point or insight
 - Note how it relates to the RFC topic
+
+When a source is presented as a reference implementation, analyze it as a semantic specification before recommending target details:
+- Summarize behaviors and guarantees
+- Identify deliberate decisions and cite the evidence
+- Separate incidental language, framework, and repository details
+- Map the required semantics to native conventions in the target repository
+- Report translation gaps where the target cannot preserve a guarantee directly
+- Identify the source license before reusing implementation text
+
+If the reference source is unavailable, report the missing evidence and continue only with independently verified facts.
+If the license is missing or unclear, limit the work to behavioral analysis and copy no source text.
+If evidence is insufficient to classify a detail as deliberate, label it as an open question rather than a finding.
 
 CRITICAL: Always capture the full URL for each source. The WRITE phase needs URLs to create clickable citations.
 
@@ -207,6 +219,7 @@ Also include:
 - **Diagram needs**: Which sections benefit from architecture, flow, or deployment diagrams
 - **Data gaps**: Research findings still needed (flag for user)
 - **Reviewer guidance**: What reviewers should focus on per section
+- **Decision-first review summary**: outcome, chosen approach, riskiest assumption, tweakable decisions with one alternative and later-change cost, known-unknown defaults with pivot signals, then compressed mechanical work
 
 The plan must be specific enough that a writer can execute it without further research.
 
@@ -267,10 +280,12 @@ Fix minor issues directly. Flag blocking issues that require user decision.
 **No agent dispatch.** Direct interaction with user.
 
 **Interactive mode:**
-1. Present the writing plan section by section
-2. Highlight key decisions and trade-offs
-3. Show open questions that need resolution
-4. Ask for: approval, feedback, or backtrack target
+1. Present the outcome and chosen approach from PLAN.md
+2. Present the riskiest assumption
+3. Present tweakable interface, data-model, type, and user-visible decisions, with one alternative and the cost of changing later
+4. Present known unknowns, their safe defaults, and the observable signals that would trigger a pivot
+5. Compress section mechanics and dependency ordering into a final summary
+6. Ask for approval, feedback, or a backtrack target
 
 **Autonomous mode:**
 1. Log the plan summary

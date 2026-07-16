@@ -5,7 +5,7 @@ rtfpessoa's personal marketplace for [Claude Code](https://docs.anthropic.com/en
 ## Quick Reference
 
 | Command | Plugin | Purpose |
-|---------|--------|---------|
+|-|-|-|
 | `/do` | productivity | Orchestrate feature delivery with phase/state tracking |
 | `/rfc` | productivity | Write RFCs and design docs with iterative research |
 | `/debug` | productivity | Systematic debugging with root-cause-first workflow |
@@ -17,7 +17,8 @@ rtfpessoa's personal marketplace for [Claude Code](https://docs.anthropic.com/en
 | `/daily` | productivity | Daily work journal and weekly summaries in Obsidian vault |
 | `/notes` | productivity | Obsidian notes: 1:1s, meetings, career plans, promotions |
 | `/performance-feedback` | productivity | Write evidence-backed performance reviews |
-| `/brainstorm` | productivity | Brainstorm and sharpen ideas into clear problem statements |
+| `/brainstorm` | productivity | Sharpen problems or compare disposable divergent prototypes |
+| `/change-quiz` | productivity | Explain a branch or PR, then test maintainer understanding read-only |
 | `/datadog` | productivity | Query Datadog products (logs, metrics, APM, monitors) via pup CLI |
 | `/code-simplify` | productivity | Simplify and refactor code for clarity without changing behavior |
 | `/ai-cli` | productivity | Evaluate and improve CLI design for AI agent usage |
@@ -57,12 +58,20 @@ rtfpessoa's personal marketplace for [Claude Code](https://docs.anthropic.com/en
 - `/daily` -- Daily work journal and weekly summaries in Obsidian: captures work activity, meetings, achievements, team pulse, travel, learning, and kudos. Weekly summary mode (`/daily summary`) aggregates daily notes with GitHub PRs, Jira tickets, and Confluence pages into dual-format output (Confluence + Slack). Resolves people names via Obsidian People directory with wikilinks and backlinks. Feeds into `/brag` as a data source.
 - `/notes` -- Obsidian notes management: 1:1 records, meeting notes, per-person career plans, promotion proposals, achievements tracking, and general notes. Shares `~/docs/People/` directory with `/daily` for graph integration.
 - `/performance-feedback` -- Evidence-backed performance review writer: gathers data from 1:1 notes, achievements, daily logs, brag docs, GitHub PRs, Jira tickets, and Confluence pages for a specific person over a review period, then synthesizes into structured feedback by dimension (impact, technical quality, collaboration, growth, communication).
-- `/brainstorm` -- Problem-focused brainstorming: sharpens vague ideas into clear problem statements through iterative diagnostic questions. Saves brainstorms to `~/docs/brainstorms/`. Integrated with `/do` as an optional pre-refinement step.
+- `/brainstorm` -- Problem-focused brainstorming by default, with an explicit `--prototype` mode for comparing three to five disposable variants of one decision. Saves brainstorms and learned requirements to `~/docs/brainstorms/`.
+- `/change-quiz` -- Read-only branch or PR comprehension check. Reports behavioral intent, interactions, blast radius, deviations, and maintainer mental-model changes, then asks a five-to-eight-question graded quiz one question at a time. Passing requires every critical answer and at least 80 percent overall accuracy; the result is advisory and never merges or updates a PR.
 - `/datadog` -- Datadog product query via pup CLI: APM, logs, metrics, monitors, error tracking, RUM, infrastructure, security signals, incidents, SLOs, synthetics, CI/CD, and 30+ other API domains.
 - `/code-simplify` -- Code simplification across any scope (file, directory, package, branch diff, staged changes, or entire repo). Preserves behavior while improving clarity and maintainability.
 - `/ai-cli` -- CLI design evaluation and improvement for AI agents: scores against 8 Agent DX axes aligned with the AXI (Agent eXperience Interface) framework (machine-readable output, raw payload input, schema introspection, context window discipline, input hardening, safety rails, agent knowledge packaging, efficiency & composition), recommends prioritized improvements, and guides implementation.
-- `/openspec-propose`, `/openspec-apply-change`, `/openspec-archive-change`, `/openspec-explore` -- OpenSpec/OPSX workflows for proposal generation, task implementation, archive/finalization, and read-only exploration. The OpenSpec CLI stays npm-managed by `init.sh`; the skills are vendored here so Claude Code, OpenCode, Codex, and Pi receive the same versioned workflow instructions.
+- `/openspec-propose`, `/openspec-apply-change`, `/openspec-archive-change`, `/openspec-explore` -- OpenSpec/OPSX workflows for decision-first proposals, canonical task implementation and deviation handling, archive/finalization, and read-only blindspot/reference exploration. The OpenSpec CLI stays npm-managed by `init.sh`; the skills are vendored here so Claude Code, OpenCode, Codex, and Pi receive the same versioned workflow instructions.
 - `/skill-workbench` -- Skill and agent creation/improvement toolkit.
+
+The exploration, planning, brainstorming, implementation, and PR workflows share an unknowns-aware layer:
+they retrieve discoverable answers before asking questions, order remaining questions by blast radius,
+analyze references for behavior rather than transliterating source, surface consequential blindspots,
+keep deviations in canonical artifacts, and package reviewer context proportionally to change complexity.
+These behaviors adapt ideas from the MIT-licensed
+[finding-unknowns-skills](https://github.com/Neeeophytee/finding-unknowns-skills) project without importing its skills or instruction text wholesale.
 
 **Agents:**
 
@@ -92,7 +101,7 @@ rtfpessoa's personal marketplace for [Claude Code](https://docs.anthropic.com/en
 - `/commit` -- Structured commit flow with staging assistance and fixup detection.
 - `/atcommit` -- Atomic commit grouping based on dependency analysis.
 - `/fixup` -- Commit matching and autosquash-ready fixup creation.
-- `/pr` -- PR creation flow with base detection, commit analysis, and ready-mode support.
+- `/pr` -- PR creation flow with base detection, commit analysis, and ready-mode support. Medium and complex PRs add available demonstrations, the problem and chosen bet, expert-review questions, known deviations, and explicit non-goals; simple PRs stay concise.
 - `/branch` -- Branch naming from ticket/description using local conventions.
 - `/pr-fix` -- Pull and resolve PR review threads, apply changes, and reply/resolve. Supports `--auto` for bot/CI automation and `--auto-human` for fully autonomous mode.
 - `/fix-conflicts` -- Conflict-state-aware conflict resolution workflow.
@@ -118,14 +127,14 @@ REFINE ──→ RESEARCH ──→ PLAN_DRAFT ──→ PLAN_REVIEW ──→ E
 ### Phase Details
 
 | Phase | Agents | What Happens | Output |
-|-------|--------|-------------|--------|
-| **REFINE** | `refiner` | Clarify vague requests. Propose 2-3 approaches with trade-offs, get user preference. One question at a time (prefer multiple choice). | Refined spec: problem statement, chosen approach, scope, acceptance criteria |
-| **RESEARCH** | `explorer` + `researcher` (parallel) | Explorer maps local codebase (modules, patterns, conventions). Researcher searches Confluence + external docs. Both mandatory. | Context, assumptions, constraints, risks, open questions |
+|-|-|-|-|
+| **REFINE** | `refiner` | Retrieve discoverable answers, then clarify by architecture, behavior, and polish impact. Propose 2-3 approaches with trade-offs and get user preference. | Refined spec: problem statement, chosen approach, scope, acceptance criteria |
+| **RESEARCH** | `explorer` + `researcher` (parallel) | Map local code and search internal/external sources. Reference implementations are analyzed as semantic specifications with translation and license gaps. | Context, assumptions, constraints, risks, open questions |
 | **PLAN_DRAFT** | `planner` | Convert research into milestones and tasks. Plan embeds relevant context inline (not links only). | Milestones, task breakdown (TDD-first), validation strategy, recovery plan |
-| **PLAN_REVIEW** | `consistency-checker` → `reviewer` | **Step 1:** Consistency checker fixes contradictions, mismatched IDs, path inconsistencies, terminology drift (edits directly, max 10 iterations, `sonnet` model). **Step 2:** Reviewer critiques coverage, paths, dependencies, safety, executability. May loop back to PLAN_DRAFT. | Review report, required changes |
+| **PLAN_REVIEW** | `consistency-checker` → `reviewer` | Review correctness while presenting users with the outcome, chosen bet, riskiest assumption, tweakable decisions, alternatives, and pivot signals before task mechanics. | Review report, required changes |
 | **EXECUTE** | `implementer` + `spec-reviewer` + `code-quality-reviewer` | Batched execution with shift-left validation and two-stage review (see below). TDD enforced for behavioral tasks. Atomic commits at milestone boundaries via `/atcommit`. | Implemented code, atomic commits |
 | **VALIDATE** | `validator` | Run automated checks + quality scorecard (1-5 per dimension). All dimensions must score ≥ 3/5. May loop back to EXECUTE. | Validation report, acceptance evidence, quality scorecard |
-| **DONE** | — | Write retrospective, run final test suite. Create PR (interactive: user chooses; autonomous: auto-creates). | PR URL or merge commit |
+| **DONE** | — | Write retrospective, run final tests, summarize deviations, discoveries, unresolved review questions, and the key learning from canonical state, then offer PR creation. | PR URL or merge commit |
 
 ### EXECUTE Phase — Batch Loop
 
@@ -169,7 +178,7 @@ Code written before its test is deleted and restarted.
 ### Workspace Modes
 
 | Mode | Description |
-|------|-------------|
+|-|-|
 | Worktree + branch (default) | Isolated git worktree with feature branch — main workspace stays clean |
 | Branch only | Feature branch in current directory |
 | Current branch | Work on the already checked-out branch |
@@ -180,7 +189,7 @@ Code written before its test is deleted and restarted.
 All artifacts live in `~/docs/plans/do/<name>/`:
 
 | File | Written After | Contents |
-|------|---------------|----------|
+|-|-|-|
 | `FEATURE.md` | Creation | YAML frontmatter, acceptance criteria, progress, decisions, outcomes |
 | `RESEARCH.md` | RESEARCH | Codebase map, research brief, findings, open questions |
 | `PLAN.md` | PLAN_DRAFT | Milestones, task breakdown, validation strategy, recovery |
