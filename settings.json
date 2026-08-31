@@ -162,6 +162,7 @@
       "/private/var/tmp"
     ]
   },
+  "model": "opus[1m]",
   "enabledMcpjsonServers": [
     "atlassian",
     "datadog-google-workspace",
@@ -229,7 +230,8 @@
     "valet@datadog-claude-plugins": true,
     "codex@openai-codex": true,
     "appgate@datadog-claude-plugins": true,
-    "migrate-to-rapid@datadog-claude-plugins": true
+    "migrate-to-rapid@datadog-claude-plugins": true,
+    "trajectory@trajectory": true
   },
   "extraKnownMarketplaces": {
     "claude-plugins-official": {
@@ -261,11 +263,18 @@
         "source": "github",
         "repo": "openai/codex-plugin-cc"
       }
+    },
+    "trajectory": {
+      "source": {
+        "source": "directory",
+        "path": "/Users/kirill.kapkov/.trajectory/claude-marketplace"
+      }
     }
   },
   "alwaysThinkingEnabled": true,
-  "effortLevel": "xhigh",
+  "effortLevel": "medium",
   "autoUpdatesChannel": "latest",
+  "tui": "fullscreen",
   "autoMemoryEnabled": true,
   "autoDreamEnabled": true,
   "skipDangerousModePermissionPrompt": true,
